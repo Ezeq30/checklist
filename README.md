@@ -131,6 +131,33 @@ python -m PyInstaller ChecklistHipodromos.spec --noconfirm
 - Los datos se guardan en data.json en la carpeta del exe
 - Login evita apertura múltiple de popup
 - Calendario y checklist ajustados para reducir espacios vacíos y mejorar legibilidad
+- D2 de MAÑANA se habilita correctamente tras completar D1
+- Renderizado uniforme de checklists (mismo tamaño de filas para todos los hipódromos)
+- Cambio entre D1/D2 funciona correctamente para ambos paneles (HOY y MAÑANA)
+
+## Cambios de Mantenimiento y Fixes (2025-05-10)
+
+### Fix: Habilitación de D2 para MAÑANA
+- **Problema**: Al completar D1 de MAÑANA, el botón D2 no se habilitaba automáticamente
+- **Causa**: La función `actualizar_info_paneles()` nunca se llamaba después de guardar
+- **Solución**: Se llama `actualizar_info_paneles()` en:
+  - `__init__`: al iniciar la app
+  - `guardar_checklist_panel`: después de guardar D1 o D2
+
+### Fix: Renderizado uniforme de checkboxes
+- **Problema**: Los items de La Plata (10 items) se veían más grandes que San Isidro (13 items)
+- **Causa**: `row_count` dependía de la cantidad de items reales
+- **Solución**: Se usa un `row_count` máximo fijo de 14 items para mantener proporciones uniformes
+
+### Fix: Cambio entre D1 y D2 no actualizaba la vista
+- **Problema**: Al hacer click en D1 desde D2 en el panel MAÑANA, no se refreshaba la vista
+- **Causa**: `set_mode_panel` solo llamaba a `render_checklist_panel` para HOY
+- **Solución**: Ahora `set_mode_panel` siempre renderiza el panel seleccionado
+
+### Fix: Refresh después de guardar D1
+- **Problema**: Al guardar D1 completado, no mostraba "Día 1 completado" automáticamente
+- **Causa**: Faltaba forzar el render después de cambiar el modo
+- **Solución**: Se agregaron `root.update_idletasks()` y `render_checklist_panel()` después de guardar
 
 ## Problemas Conocidos / Próximos Ajustes
 - Ajustar fino de tipografías según escala de Windows (100%, 125%, 150%) para mantener proporciones ideales.

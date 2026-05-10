@@ -77,11 +77,18 @@
       "LOCAL ASSOC BETTING CONTROL": true,
       "SALES TAX ASSOCIATION": true,
       "PRINTERS": true,
-      "STATE BETTING CONTROL": true
+      "STATE BETTING CONTROL": true,
+      "SETEAR CATEGORIA": true,
+      "VOLVER A REVISAR EL PROGRAMA": true,
+      "BLOQUEAR / DESBLOQUEAR AGENTES": true,
+      "PONER TIPS EN SERVICIO": true,
+      "PONER TERMINALES EN SERVICIO": true,
+      "RESETEAR TERMINALES": true,
+      "SETEAR VIDEOS POR MEET": true
     }
   },
   "estado": {
     "2026-05-10": "completo",
-    "2026-05-11": "dia1_completado"
+    "2026-05-11": "completo"
   }
 }

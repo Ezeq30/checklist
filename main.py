@@ -187,15 +187,19 @@ class ChecklistApp:
         self.root.minsize(940, 395)
         self.root.maxsize(940, 395)
         self.root.configure(bg=COLORS["bg"])
-        
-        self.data = self.cargar_datos()
+
+        self.data = self.cargar_datos()  # Carga datos desde data.json
         self.current_month = datetime.now().month
         self.current_year = datetime.now().year
         self.admin_mode = False
         self.login_popup_abierto = False
         self.day_default_styles = {}
-        
+
         self.setup_ui()
+        # FIX: Actualizarinfo_paneles se llama al inicio para cargar estados de D2
+        # Esto asegura que si D1 ya estaba completado, D2 se habilite correctamente
+        self.actualizar_info_paneles()
+        self.actualizar_info_paneles()
 
     def cargar_datos(self):
         if os.path.exists(DATA_FILE):
@@ -759,13 +763,19 @@ class ChecklistApp:
             self.modo_manana_var.set("dia2")
 
     def set_mode_panel(self, panel, modo):
+        """
+        Cambia el modo (D1/D2) del panel especificado.
+        Args:
+            panel: "hoy" o "manana"
+            modo: "dia1" o "dia2"
+        FIX: Ahora siempre renderiza el panel indicado (antes solo renderizaba HOY)
+        """
         if panel == "hoy":
             self.modo_hoy_var.set(modo)
         else:
             self.modo_manana_var.set(modo)
         self.update_mode_toggle(panel)
-        if panel == "hoy":
-            self.render_checklist_panel(panel)
+        self.render_checklist_panel(panel)
 
     def set_mode_d2_enabled(self, panel, enabled):
         if panel == "hoy":
@@ -888,12 +898,13 @@ class ChecklistApp:
         
         frame.update_idletasks()
         cols = 2
-        frame_width = 280
-        wrap_len = 260
+        wrap_len = 180
         row_items = {}
-        row_count = max(1, (len(items) + cols - 1) // cols)
-        frame_height = 280
-        target_row_height = 30
+        # FIX: Usar max_items fijo (14) para mantener uniforme el tamaño de filas
+        # Esto evita que La Plata (10 items) se vea diferente que San Isidro (13 items)
+        max_items = 14
+        row_count = max(1, (max_items + cols - 1) // cols)
+        target_row_height = 26
 
         for r in range(0, 20):
             frame.rowconfigure(r, weight=0, minsize=0)
@@ -942,7 +953,7 @@ class ChecklistApp:
             
         frame.update_idletasks()
         for row, row_frames in row_items.items():
-            target_height = 30
+            target_height = 34
             frame.rowconfigure(row, weight=1, minsize=target_height)
             for item in row_frames:
                 item.grid_propagate(False)
@@ -953,11 +964,18 @@ class ChecklistApp:
         print(f"RENDER DONE panel={panel}")
 
     def guardar_checklist_panel(self, panel):
+        """
+        Guarda el checklist del panel especificado.
+        Valida que todos los items estén completados antes de guardar.
+
+        Fix: Se agregaron llamadas a actualizar_info_paneles() y render_checklist_panel()
+        para asegurar que la UI se actualice correctamente después de guardar.
+        """
         from datetime import timedelta
         hoy = datetime.now()
         manana = (hoy + timedelta(days=1)).strftime("%Y-%m-%d")
         fecha_hoy = hoy.strftime("%Y-%m-%d")
-        
+
         if panel == "hoy":
             fecha_key = fecha_hoy
             modo = self.modo_hoy_var.get()
@@ -968,27 +986,27 @@ class ChecklistApp:
             modo = self.modo_manana_var.get()
             check_vars = self.check_vars_manana
             target_panel = "manana"
-        
+
         if "checklist" not in self.data:
             self.data["checklist"] = {}
         if fecha_key not in self.data["checklist"]:
             self.data["checklist"][fecha_key] = {}
-        
+
         items_guardados = 0
         total_items = len(check_vars)
-        
+
         for item, var in check_vars.items():
             estado_check = var.get()
             self.data["checklist"][fecha_key][item] = estado_check
             if estado_check:
                 items_guardados += 1
-        
+
         all_checked = items_guardados == total_items and total_items > 0
-        
+
         if not all_checked:
             messagebox.showwarning("Incompleto", f"Completá todos los items ({items_guardados}/{total_items})")
             return
-        
+
         if "estado" not in self.data:
             self.data["estado"] = {}
 
@@ -996,19 +1014,28 @@ class ChecklistApp:
         if modo == "dia2" and estado_actual not in ("dia1_completado", "completo"):
             messagebox.showwarning("Bloqueado", "Primero completá y guardá DIA 1 para habilitar DIA 2.")
             return
-        
+
         if modo == "dia1":
+            # Guardar estado como "dia1_completado" y cambiar automáticamente a D2
             self.data["estado"][fecha_key] = "dia1_completado"
             self.set_mode_d2_enabled(target_panel, True)
             self.guardar_datos()
             self.limpiar_datos_antiguos()
+            # FIX: Actualizar paneles para que se habilite D2 correctamente
+            self.actualizar_info_paneles()
+            self.root.update_idletasks()
             self.set_mode_panel(target_panel, "dia2")
+            self.render_checklist_panel(target_panel)
+            self.root.update_idletasks()
             messagebox.showinfo("Guardado", f"Día 1 completado!\n({items_guardados}/{total_items})\nAhora completá Día 2.")
         else:
+            # Guardar estado como "completo" y mostrar pantalla de completado
             self.data["estado"][fecha_key] = "completo"
             self.guardar_datos()
             self.limpiar_datos_antiguos()
+            self.actualizar_info_paneles()
             self.mostrar_pantalla_completado(panel)
+            self.root.update_idletasks()
 
     def limpiar_datos_antiguos(self):
         from datetime import timedelta
