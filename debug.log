@@ -1,0 +1,3 @@
+RENDER panel=hoy force=False
+check_vars.clear() panel=hoy count=0
+RENDER panel=hoy force=False
