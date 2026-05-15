@@ -33,7 +33,7 @@
     "2026-05-22": "San isidro"
   },
   "checklist": {
-    "2026-05-10": {
+    "2026-05-13": {
       "FECHA Y ESTADO": true,
       "MEET Y PERFORMANCE": true,
       "CALC PRICES": true,
@@ -63,7 +63,7 @@
       "CARGAR EL VIDEO EN LA APP MOBILE": true,
       "SETEAR VIDEOS POR MEET": true
     },
-    "2026-05-11": {
+    "2026-05-15": {
       "FECHA Y ESTADO": true,
       "MEET Y PERFORMANCE": true,
       "CALC PRICES": true,
@@ -77,18 +77,11 @@
       "LOCAL ASSOC BETTING CONTROL": true,
       "SALES TAX ASSOCIATION": true,
       "PRINTERS": true,
-      "STATE BETTING CONTROL": true,
-      "SETEAR CATEGORIA": true,
-      "VOLVER A REVISAR EL PROGRAMA": true,
-      "BLOQUEAR / DESBLOQUEAR AGENTES": true,
-      "PONER TIPS EN SERVICIO": true,
-      "PONER TERMINALES EN SERVICIO": true,
-      "RESETEAR TERMINALES": true,
-      "SETEAR VIDEOS POR MEET": true
+      "STATE BETTING CONTROL": true
     }
   },
   "estado": {
-    "2026-05-10": "completo",
-    "2026-05-11": "completo"
+    "2026-05-13": "completo",
+    "2026-05-15": "dia1_completado"
   }
 }

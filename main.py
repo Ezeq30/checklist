@@ -929,29 +929,98 @@ class ChecklistApp:
             var = tk.BooleanVar(value=False)
             check_vars[item] = var
             
-            var.trace_add("write", lambda *a, p=panel, i=item, v=var: None)
+            if modo == "dia2" and item == "SETEAR CATEGORIA":
+                hipo_nombre = HIPODROMOS.get(hipo, {}).get("nombre", "SIN ASIGNAR")
+                
+                inner_frame = tk.Frame(frame_item, bg=bg_color)
+                inner_frame.pack(fill="both", expand=True, padx=2, pady=2)
+                
+                cb = tk.Checkbutton(
+                    inner_frame,
+                    text="",
+                    variable=var,
+                    bg=bg_color,
+                    fg=fg_color,
+                    selectcolor="#22C55E",
+                    activebackground=bg_color,
+                    activeforeground=fg_color,
+                    font=("Segoe UI", 9, "bold"),
+                    bd=0,
+                    relief="flat",
+                    indicatoron=True,
+                )
+                cb.pack(side="left", padx=(0, 4), anchor="center", fill="none")
+                
+                label_setear = tk.Label(
+                    inner_frame,
+                    text="SETEAR CATEGORIA -",
+                    font=("Segoe UI", 9, "bold"),
+                    bg=bg_color,
+                    fg=fg_color,
+                )
+                label_setear.pack(side="left", padx=2, anchor="center")
+                
+                label_alerta = tk.Label(
+                    inner_frame,
+                    text=hipo_nombre,
+                    font=("Segoe UI", 14, "bold"),
+                    bg=bg_color,
+                    fg="#FF0000"
+                )
+                label_alerta.pack(side="left", padx=2, anchor="center")
+                
+                blinking = [True]
+                blink_colors = ["#FF0000", "#FFFFFF"]
+                blink_idx = [0]
+                blink_timer = [None]
+                
+                def blink_loop():
+                    label_alerta.config(fg=blink_colors[blink_idx[0] % 2])
+                    blink_idx[0] = (blink_idx[0] + 1) % 2
+                    blink_timer[0] = label_alerta.after(600, blink_loop)
+                
+                blink_loop()
+                
+                def on_toggle(*args, fi=frame_item, inf=inner_frame, ob=bg_color, v=var):
+                    bg = COLORS["success"] if v.get() else ob
+                    fi.configure(bg=bg)
+                    inf.configure(bg=bg)
+                    for c in inf.winfo_children():
+                        try:
+                            c.configure(bg=bg)
+                        except tk.TclError:
+                            pass
+                var.trace_add("write", on_toggle)
+            else:
+                cb = tk.Checkbutton(
+                    frame_item,
+                    text=item,
+                    variable=var,
+                    bg=bg_color,
+                    fg=fg_color,
+                    selectcolor="#22C55E",
+                    activebackground=bg_color,
+                    activeforeground=fg_color,
+                    font=("Segoe UI", 9, "bold"),
+                    anchor="w",
+                    justify="left",
+                    wraplength=wrap_len,
+                    bd=0,
+                    relief="flat",
+                )
+                cb.pack(fill="x", expand=True)
+                
+                def on_toggle(*args, fi=frame_item, ob=bg_color, v=var):
+                    bg = COLORS["success"] if v.get() else ob
+                    fi.configure(bg=bg)
+                    for c in fi.winfo_children():
+                        try:
+                            c.configure(bg=bg)
+                        except tk.TclError:
+                            pass
+                var.trace_add("write", on_toggle)
             
-            # IMPORTANTE: No usar command= con lógica compleja aquí
-            # Ver motivo en docstring de render_checklist_panel
-            cb = tk.Checkbutton(
-                frame_item,
-                text=item,
-                variable=var,
-                bg=bg_color,
-                fg=fg_color,
-                selectcolor="#22C55E",  # Verde para el check marcado
-                activebackground=bg_color,
-                activeforeground=fg_color,
-                font=("Segoe UI", 9, "bold"),
-                anchor="w",
-                justify="left",
-                wraplength=wrap_len,
-                bd=0,
-                relief="flat",
-            )
-            cb.pack(fill="x", expand=True)
-            
-        frame.update_idletasks()
+                frame.update_idletasks()
         for row, row_frames in row_items.items():
             target_height = 34
             frame.rowconfigure(row, weight=1, minsize=target_height)
@@ -1178,14 +1247,6 @@ class ChecklistApp:
             textColor=colors.HexColor("#4B5563"),
             spaceAfter=8,
         )
-        section_style = ParagraphStyle(
-            "SectionModern",
-            parent=styles["Heading2"],
-            fontName="Helvetica-Bold",
-            fontSize=12,
-            textColor=hipo_color,
-            spaceAfter=8,
-        )
         status_ok_style = ParagraphStyle(
             "StatusOk",
             parent=styles["Normal"],
@@ -1203,63 +1264,58 @@ class ChecklistApp:
             spaceBefore=10,
         )
 
-        titulo = Paragraph(f"CHECKLIST - {titulo_panel} - {hipodromo.upper()}", title_style)
+        titulo = Paragraph(f"CHECKLIST - {hipodromo.upper()}", title_style)
         story.append(titulo)
-        story.append(Spacer(1, 8))
+        story.append(Spacer(1, 6))
 
-        fecha_par = Paragraph(f"Fecha: {fecha_key}", subtitle_style)
+        fecha_display = f"{fecha_key[8:10]}/{fecha_key[5:7]}/{fecha_key[0:4]}"
+        fecha_par = Paragraph(f"Fecha: {fecha_display}", subtitle_style)
         story.append(fecha_par)
         story.append(Spacer(1, 10))
 
         items_d1 = CHECKLIST_DIA1
         items_d2 = CHECKLIST_DIA2_POR_HIPODROMO.get(hipo, CHECKLIST_DIA2_SAN_ISIDRO)
-        
-        story.append(Paragraph("DÍA 1 (PRE-CARRERA)", section_style))
-        story.append(Spacer(1, 2))
-        
-        data = [["#", "Item", "Estado"]]
-        for i, item in enumerate(items_d1, 1):
-            checked = self.data.get("checklist", {}).get(fecha_key, {}).get(item, False)
-            estado = "✓" if checked else "✗"
-            data.append([i, item, estado])
-        
-        t = Table(data, colWidths=[25, 380, 50])
-        t.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), hipo_color),
-            ("TEXTCOLOR", (0, 0), (-1, 0), header_fg),
-            ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, 0), 10),
-            ("BOTTOMPADDING", (0, 0), (-1, 0), 7),
-            ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#F8FAFC")),
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.HexColor("#FFFFFF"), colors.HexColor("#F1F5F9")]),
-            ("GRID", (0, 0), (-1, -1), 0.7, colors.HexColor("#CBD5E1")),
+
+        def build_inner_table(title, items):
+            data = [[title, "", ""]]
+            data.append(["#", "Item", "Estado"])
+            for i, item in enumerate(items, 1):
+                checked = self.data.get("checklist", {}).get(fecha_key, {}).get(item, False)
+                estado = "✓" if checked else "✗"
+                data.append([i, item, estado])
+            col_w = [16, 186, 40]
+            t = Table(data, colWidths=col_w)
+            t.setStyle(TableStyle([
+                ("SPAN", (0, 0), (-1, 0)),
+                ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+                ("ALIGN", (2, 0), (2, -1), "CENTER"),
+                ("BACKGROUND", (0, 0), (-1, 1), hipo_color),
+                ("TEXTCOLOR", (0, 0), (-1, 1), header_fg),
+                ("FONTNAME", (0, 0), (-1, -1), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, 0), 9),
+                ("FONTSIZE", (0, 1), (-1, 1), 8),
+                ("FONTSIZE", (0, 2), (-1, -1), 7.5),
+                ("TOPPADDING", (0, 0), (-1, -1), 2),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                ("ROWBACKGROUNDS", (0, 2), (-1, -1), [colors.HexColor("#FFFFFF"), colors.HexColor("#F1F5F9")]),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ]))
+            return t
+
+        t_d1 = build_inner_table("DÍA 1 (PRE-CARRERA)", items_d1)
+        t_d2 = build_inner_table("DÍA 2 (CARRERA)", items_d2)
+
+        # PDF en 1 hoja: D1 y D2 lado a lado en tabla wrapper de 2 columnas
+        wrapper = Table([[t_d1, t_d2]], colWidths=[242, 242])
+        wrapper.setStyle(TableStyle([
+            ("LEFTPADDING", (0, 0), (0, 0), 0),
+            ("RIGHTPADDING", (0, 0), (0, 0), 10),
+            ("LEFTPADDING", (1, 0), (1, 0), 10),
+            ("RIGHTPADDING", (1, 0), (1, 0), 0),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ]))
-        story.append(t)
-        
-        story.append(Spacer(1, 14))
-        story.append(Paragraph("DÍA 2 (CARRERA)", section_style))
-        story.append(Spacer(1, 4))
-        
-        data2 = [["#", "Item", "Estado"]]
-        for i, item in enumerate(items_d2, 1):
-            checked = self.data.get("checklist", {}).get(fecha_key, {}).get(item, False)
-            estado = "✓" if checked else "✗"
-            data2.append([i, item, estado])
-        
-        t2 = Table(data2, colWidths=[25, 380, 50])
-        t2.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), hipo_color),
-            ("TEXTCOLOR", (0, 0), (-1, 0), header_fg),
-            ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, 0), 10),
-            ("BOTTOMPADDING", (0, 0), (-1, 0), 7),
-            ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#F8FAFC")),
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.HexColor("#FFFFFF"), colors.HexColor("#F1F5F9")]),
-            ("GRID", (0, 0), (-1, -1), 0.7, colors.HexColor("#CBD5E1")),
-        ]))
-        story.append(t2)
+        story.append(wrapper)
 
         estado = self.data.get("estado", {}).get(fecha_key, "")
         if estado == "completo":

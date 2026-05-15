@@ -38,10 +38,13 @@ Check/
 - Validación de completitud antes de guardar
 - Flujo guiado: al completar Día 1 se habilita Día 2 y cambia automáticamente al modo Día 2
 - Botón de PDF removido del encabezado (imprimir solo al finalizar el checklist completo)
+- **SETEAR CATEGORIA destacado en D2**: El primer item de cada checklist D2 muestra el nombre del hipódromo junto al checkbox, parpadeando en rojo/blanco para alertas al operador qué categoría debe setear. Funciona para los 3 hipódromos (San Isidro, La Plata, Palermo).
 
 ### PDF
-- Genera PDF con Día 1 y Día 2 juntos
-- Incluye fecha, hipódromo y estado de cada item
+- Genera PDF con Día 1 y Día 2 lado a lado en una sola hoja (tabla wrapper de 2 columnas)
+- Incluye fecha (DD/MM/AAAA), hipódromo y estado de cada item
+- Título sin HOY/MAÑANA, solo hipódromo
+- Columna Estado centrada y más ancha para mejor legibilidad
 - Diseño modernizado:
   - Cabeceras y títulos con color del hipódromo
   - Filas alternadas para mejor lectura
@@ -125,6 +128,12 @@ python -m PyInstaller ChecklistHipodromos.spec --noconfirm
 - Flujo Día 1 -> Día 2 automático tras completar Día 1
 - PDF modernizado con colores por hipódromo y mejor legibilidad de tablas
 - Recompilación del ejecutable con todos los ajustes
+- **Feature: SETEAR CATEGORIA destacado en D2** (2026-05-12): El item "SETEAR CATEGORIA" en Día 2 ahora muestra el nombre del hipódromo parpadeando en rojo/blanco como alerta visual para que el operador sepa qué categoría setear. Implementación:
+  - `render_checklist_panel()` detecta `modo == "dia2" and item == "SETEAR CATEGORIA"`
+  - Crea estructura: checkbox | "SETEAR CATEGORIA -" | "[NOMBRE_HIP]" (parpadeando)
+  - El label del hipódromo usa `after()` para alternar colores (#FF0000 ↔ #FFFFFF) cada 600ms
+  - Fuente 14 bold para máxima visibilidad
+  - Funciona en los 3 hipódromos: San Isidro, La Plata, Palermo
 
 ## Estado Actual
 - El ejecutable funciona correctamente
@@ -134,6 +143,7 @@ python -m PyInstaller ChecklistHipodromos.spec --noconfirm
 - D2 de MAÑANA se habilita correctamente tras completar D1
 - Renderizado uniforme de checklists (mismo tamaño de filas para todos los hipódromos)
 - Cambio entre D1/D2 funciona correctamente para ambos paneles (HOY y MAÑANA)
+- Feature SETEAR CATEGORIA destacado en D2 implementada y compilada
 
 ## Cambios de Mantenimiento y Fixes (2025-05-10)
 
