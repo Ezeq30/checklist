@@ -9,9 +9,9 @@ import json
 import os
 
 HIPODROMOS = {
-    "San isidro": {"color": "#2E7D32", "nombre": "SAN ISIDRO"},
-    "La plata": {"color": "#1565C0", "nombre": "LA PLATA"},
-    "Palermo": {"color": "#F9A825", "nombre": "PALERMO"}
+    "San isidro": {"color": "#2E7D32", "nombre": "SAN ISIDRO", "checked": "#4CAF50"},
+    "La plata": {"color": "#1565C0", "nombre": "LA PLATA", "checked": "#42A5F5"},
+    "Palermo": {"color": "#F9A825", "nombre": "PALERMO", "checked": "#FDD835"}
 }
 
 COLORS = {
@@ -60,7 +60,7 @@ CHECKLIST_DIA2_SAN_ISIDRO = [
 CHECKLIST_DIA2_LA_PLATA = [
     "SETEAR CATEGORIA",
     "VOLVER A REVISAR EL PROGRAMA Y POSTING",
-    "CAMBIAR EN LAS VENTANILLAS LOS AGENTES QUE CORRESPONDAN",
+    "CAMBIAR EN LAS VENTANILLAS LOS AGENTES",
     "BLOQUEAR / DESBLOQUEAR AGENTES",
     "PONER TIPS EN SERVICIO",
     "PONER TERMINALES EN SERVICIO",
@@ -890,6 +890,10 @@ class ChecklistApp:
             bg_color = HIPODROMOS[hipo]["color"]
             fg_color = "white" if hipo != "Palermo" else "black"
         
+        checked_color = COLORS["success"]
+        if hipo and hipo in HIPODROMOS:
+            checked_color = HIPODROMOS[hipo].get("checked", COLORS["success"])
+        
         for w in frame.winfo_children():
             w.destroy()
         
@@ -981,8 +985,8 @@ class ChecklistApp:
                 
                 blink_loop()
                 
-                def on_toggle(*args, fi=frame_item, inf=inner_frame, ob=bg_color, v=var):
-                    bg = COLORS["success"] if v.get() else ob
+                def on_toggle(*args, fi=frame_item, inf=inner_frame, ob=bg_color, v=var, cc=checked_color):
+                    bg = cc if v.get() else ob
                     fi.configure(bg=bg)
                     inf.configure(bg=bg)
                     for c in inf.winfo_children():
@@ -1010,8 +1014,8 @@ class ChecklistApp:
                 )
                 cb.pack(fill="x", expand=True)
                 
-                def on_toggle(*args, fi=frame_item, ob=bg_color, v=var):
-                    bg = COLORS["success"] if v.get() else ob
+                def on_toggle(*args, fi=frame_item, ob=bg_color, v=var, cc=checked_color):
+                    bg = cc if v.get() else ob
                     fi.configure(bg=bg)
                     for c in fi.winfo_children():
                         try:
