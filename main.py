@@ -7,29 +7,56 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 import json
 import os
+import sys
+import tempfile
 
 HIPODROMOS = {
     "San isidro": {"color": "#2E7D32", "nombre": "SAN ISIDRO", "checked": "#4CAF50"},
     "La plata": {"color": "#1565C0", "nombre": "LA PLATA", "checked": "#42A5F5"},
-    "Palermo": {"color": "#F9A825", "nombre": "PALERMO", "checked": "#FDD835"}
+    "Palermo": {"color": "#F9A825", "nombre": "PALERMO", "checked": "#FDD835"},
+    "Sin hipodromo": {"color": "#C62828", "nombre": "SIN HIPODROMO", "checked": "#EF4444"},
 }
 
 COLORS = {
-    "bg": "#111827",
-    "fg": "#F9FAFB",
-    "accent": "#8B5CF6",
-    "card": "#1F2937",
-    "card_soft": "#273449",
-    "surface": "#0F172A",
-    "border": "#334155",
-    "hover_soft": "#334155",
-    "hover_accent": "#7C3AED",
-    "muted": "#9CA3AF",
+    "bg": "#080D16",
+    "fg": "#F1F5F9",
+    "accent": "#38BDF8",
+    "card": "#121A26",
+    "card_soft": "#1A2433",
+    "surface": "#0E1520",
+    "border": "#243044",
+    "hover_soft": "#1E2A3A",
+    "hover_accent": "#0EA5E9",
+    "muted": "#94A3B8",
     "success": "#10B981",
     "warning": "#F59E0B",
     "danger": "#EF4444",
-    "info": "#06B6D4"
+    "info": "#06B6D4",
+    "today_ring": "#F8FAFC",
+    "input_border": "#334155",
+    "row": "#121A26",
+    "row_hover": "#1A2433",
 }
+
+
+def hipo_fg(hipo):
+    if hipo == "Palermo":
+        return "black"
+    if hipo in HIPODROMOS:
+        return "white"
+    return COLORS["fg"]
+
+
+def hipo_color(hipo, fallback=None):
+    if hipo and hipo in HIPODROMOS:
+        return HIPODROMOS[hipo]["color"]
+    return COLORS["card"] if fallback is None else fallback
+
+
+def hipo_checked(hipo):
+    if hipo and hipo in HIPODROMOS:
+        return HIPODROMOS[hipo].get("checked", COLORS["success"])
+    return COLORS["success"]
 
 CHECKLIST_DIA1 = [
     "FECHA Y ESTADO", "MEET Y PERFORMANCE", "CALC PRICES",
@@ -84,9 +111,6 @@ CHECKLIST_DIA2_POR_HIPODROMO = {
     "Palermo": CHECKLIST_DIA2_PALERMO
 }
 
-import sys
-import os
-
 if getattr(sys, 'frozen', False):
     exec_dir = os.path.dirname(sys.executable)
 else:
@@ -97,31 +121,56 @@ DATA_FILE = os.path.join(exec_dir, "data.json")
 class StyledButton(tk.Button):
     def __init__(self, master, **kwargs):
         bg = kwargs.pop("bg", COLORS["accent"])
-        fg = kwargs.pop("fg", "white")
+        fg = kwargs.pop("fg", COLORS["fg"])
         hover_bg = kwargs.pop("hover_bg", COLORS["hover_soft"])
+        padx = kwargs.pop("padx", 8)
+        pady = kwargs.pop("pady", 3)
+        font = kwargs.pop("font", ("Segoe UI", 8, "bold"))
         super().__init__(
             master,
             bg=bg,
             fg=fg,
             activebackground=bg,
-            activeforeground="white",
+            activeforeground=fg,
             relief="flat",
             bd=0,
-            padx=12,
-            pady=6,
-            font=("Segoe UI", 9, "bold"),
+            padx=padx,
+            pady=pady,
+            font=font,
+            cursor="hand2",
             **kwargs
         )
         self._base_bg = bg
         self._hover_bg = hover_bg
+        self._fg = fg
         self.bind("<Enter>", self._on_enter)
         self.bind("<Leave>", self._on_leave)
+
+    def set_bg(self, bg, hover_bg=None, fg=None):
+        self._base_bg = bg
+        if hover_bg is not None:
+            self._hover_bg = hover_bg
+        if fg is not None:
+            self._fg = fg
+            self.config(fg=fg, activeforeground=fg)
+        self.config(bg=bg, activebackground=bg)
 
     def _on_enter(self, _event):
         self.config(cursor="hand2", bg=self._hover_bg, activebackground=self._hover_bg)
 
     def _on_leave(self, _event):
-        self.config(cursor="", bg=self._base_bg, activebackground=self._base_bg)
+        self.config(bg=self._base_bg, activebackground=self._base_bg)
+
+
+class SegmentedGroup(tk.Frame):
+    def __init__(self, master, **kwargs):
+        super().__init__(
+            master,
+            bg=COLORS["card"],
+            highlightthickness=1,
+            highlightbackground=COLORS["border"],
+            **kwargs
+        )
 
 
 class SegmentedButton(tk.Button):
@@ -132,7 +181,7 @@ class SegmentedButton(tk.Button):
             relief="flat",
             bd=0,
             padx=10,
-            pady=5,
+            pady=3,
             font=("Segoe UI", 8, "bold"),
             activeforeground=COLORS["fg"],
             **kwargs
@@ -140,17 +189,27 @@ class SegmentedButton(tk.Button):
         self._base_bg = self.cget("bg")
         self._hover_bg = hover_bg
         self._enabled = True
+        self._accent = COLORS["accent"]
+        self._accent_fg = COLORS["fg"]
+        self._active = False
         self.bind("<Enter>", self._on_enter)
         self.bind("<Leave>", self._on_leave)
 
+    def set_accent(self, bg, fg=None):
+        self._accent = bg
+        self._accent_fg = fg or COLORS["fg"]
+        if self._active:
+            self.set_active(True)
+
     def set_active(self, active):
+        self._active = active
         if not self._enabled:
             self._base_bg = COLORS["card"]
             self.config(bg=COLORS["card"], fg=COLORS["muted"], activebackground=COLORS["card"], state="disabled")
             return
         if active:
-            self._base_bg = COLORS["accent"]
-            self.config(bg=COLORS["accent"], fg=COLORS["fg"], activebackground=COLORS["accent"], state="normal")
+            self._base_bg = self._accent
+            self.config(bg=self._accent, fg=self._accent_fg, activebackground=self._accent, state="normal")
         else:
             self._base_bg = COLORS["card"]
             self.config(bg=COLORS["card"], fg=COLORS["muted"], activebackground=COLORS["card"], state="normal")
@@ -161,6 +220,7 @@ class SegmentedButton(tk.Button):
         fg = COLORS["fg"] if enabled else COLORS["muted"]
         self.config(state=state, fg=fg)
         if not enabled:
+            self._active = False
             self._base_bg = COLORS["card"]
             self.config(bg=COLORS["card"], activebackground=COLORS["card"])
 
@@ -168,17 +228,150 @@ class SegmentedButton(tk.Button):
         if not self._enabled:
             return
         self.config(cursor="hand2")
-        if self.cget("bg") != COLORS["accent"]:
+        if not self._active:
             self.config(bg=self._hover_bg, activebackground=self._hover_bg, fg=COLORS["fg"])
 
     def _on_leave(self, _event):
         self.config(cursor="")
-        self.config(bg=self._base_bg, activebackground=self._base_bg)
+        fg = self._accent_fg if self._active else (COLORS["fg"] if self._enabled else COLORS["muted"])
+        self.config(bg=self._base_bg, activebackground=self._base_bg, fg=fg)
+
+
+class CheckMark(tk.Canvas):
+    SIZE = 16
+
+    def __init__(self, master, var, color, mark_fg="white", bg=None):
+        bg = bg or COLORS["row"]
+        super().__init__(
+            master,
+            width=self.SIZE,
+            height=self.SIZE,
+            highlightthickness=0,
+            bd=0,
+            bg=bg,
+            cursor="hand2",
+        )
+        self.var = var
+        self.color = color
+        self.mark_fg = mark_fg
+        self._bg = bg
+        self.bind("<Button-1>", self._toggle)
+        self._trace = var.trace_add("write", lambda *_: self._draw())
+        self._draw()
+
+    def set_bg(self, bg):
+        self._bg = bg
+        self.config(bg=bg)
+        self._draw()
+
+    def _toggle(self, _event=None):
+        self.var.set(not self.var.get())
+        return "break"
+
+    def _draw(self):
+        self.delete("all")
+        s = self.SIZE
+        pad = 2
+        if self.var.get():
+            self.create_oval(pad, pad, s - pad, s - pad, fill=self.color, outline=self.color)
+            self.create_line(5, 9, 7, 11, 12, 6, fill=self.mark_fg, width=2, capstyle="round", joinstyle="round")
+        else:
+            self.create_oval(pad, pad, s - pad, s - pad, fill=self._bg, outline=self.color, width=2)
+
+
+def _round_poly(canvas, x1, y1, x2, y2, r, **kwargs):
+    r = max(2, min(r, (x2 - x1) / 2, (y2 - y1) / 2))
+    pts = [
+        x1 + r, y1, x2 - r, y1, x2, y1, x2, y1 + r,
+        x2, y2 - r, x2, y2, x2 - r, y2, x1 + r, y2,
+        x1, y2, x1, y2 - r, x1, y1 + r, x1, y1,
+    ]
+    return canvas.create_polygon(pts, smooth=True, **kwargs)
+
+
+class DayCell(tk.Canvas):
+    def __init__(self, master, on_click):
+        super().__init__(
+            master,
+            width=42,
+            height=28,
+            highlightthickness=0,
+            bd=0,
+            bg=COLORS["surface"],
+            cursor="",
+        )
+        self._on_click = on_click
+        self.text = ""
+        self._fill = COLORS["card"]
+        self._fg = COLORS["fg"]
+        self._today = False
+        self._hover = False
+        self.bind("<Configure>", lambda _e: self._redraw())
+        self.bind("<Button-1>", self._click)
+        self.bind("<Enter>", self._enter)
+        self.bind("<Leave>", self._leave)
+
+    def set_day(self, text, fill, fg, today=False):
+        self.text = str(text) if text else ""
+        self._fill = fill
+        self._fg = fg
+        self._today = today
+        self._redraw()
+
+    def clear(self):
+        self.text = ""
+        self._today = False
+        self._hover = False
+        self.config(cursor="")
+        self._redraw()
+
+    def _click(self, _event=None):
+        if self.text:
+            self._on_click()
+
+    def _enter(self, _event=None):
+        if self.text:
+            self._hover = True
+            self.config(cursor="hand2")
+            self._redraw()
+
+    def _leave(self, _event=None):
+        self._hover = False
+        self.config(cursor="")
+        self._redraw()
+
+    def _redraw(self):
+        self.delete("all")
+        w = max(self.winfo_width(), 1)
+        h = max(self.winfo_height(), 1)
+        if w < 8 or h < 8:
+            return
+        if not self.text:
+            return
+        pad = 2
+        fill = self._fill
+        if self._hover and fill in (COLORS["card"], COLORS["surface"]):
+            fill = COLORS["hover_soft"]
+        radius = 7
+        _round_poly(self, pad, pad, w - pad - 1, h - pad - 1, radius, fill=fill, outline=fill)
+        if self._today:
+            _round_poly(
+                self,
+                pad + 1,
+                pad + 1,
+                w - pad - 2,
+                h - pad - 2,
+                radius - 1,
+                fill="",
+                outline=COLORS["today_ring"],
+                width=2,
+            )
+        self.create_text(w / 2, h / 2, text=self.text, fill=self._fg, font=("Segoe UI", 8, "bold"))
 
 class ChecklistApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Checklist Hipodromos")
+        self.root.title("Checklist Hipódromos")
         self.root.geometry("940x395")
         self.root.resizable(False, False)
         self.root.minsize(940, 395)
@@ -190,7 +383,6 @@ class ChecklistApp:
         self.current_year = datetime.now().year
         self.admin_mode = False
         self.login_popup_abierto = False
-        self.day_default_styles = {}
 
         self.setup_ui()
         # FIX: Actualizarinfo_paneles se llama al inicio para cargar estados de D2
@@ -211,100 +403,92 @@ class ChecklistApp:
     def setup_ui(self):
         main_frame = tk.Frame(self.root, bg=COLORS["bg"])
         main_frame.pack(fill="both", expand=True, padx=6, pady=6)
-        
-        self.left_frame = tk.Frame(main_frame, bg=COLORS["bg"])
-        self.left_frame.pack(side="left", fill="both", expand=False, padx=(0, 6))
-        
+
+        self.left_frame = tk.Frame(main_frame, bg=COLORS["bg"], width=400)
+        self.left_frame.pack(side="left", fill="y", expand=False, padx=(0, 6))
+        self.left_frame.pack_propagate(False)
+
         right_frame = tk.Frame(main_frame, bg=COLORS["bg"])
-        right_frame.pack(side="right", fill="both", expand=True, padx=0)
-        
+        right_frame.pack(side="right", fill="both", expand=True)
+
         self.setup_calendario(self.left_frame)
         self.setup_checklist(right_frame)
 
     def setup_calendario(self, parent=None):
         if parent is None:
             parent = self.root
-        
-        header = tk.Frame(parent, bg=COLORS["bg"])
-        header.pack(fill="x", pady=(2, 6), padx=6)
-        
-        StyledButton(header, text="◀", bg="#374151", command=self.mes_anterior).pack(side="left", padx=3)
-        
+
+        cal_card = tk.Frame(
+            parent,
+            bg=COLORS["surface"],
+            highlightthickness=1,
+            highlightbackground=COLORS["border"],
+        )
+        cal_card.pack(fill="both", expand=True, padx=0, pady=0)
+
+        header = tk.Frame(cal_card, bg=COLORS["surface"])
+        header.pack(fill="x", pady=(4, 4), padx=6)
+
+        StyledButton(header, text="◀", bg=COLORS["card"], hover_bg=COLORS["hover_soft"], command=self.mes_anterior, padx=8, pady=2).pack(side="left")
+
         self.lbl_mes = tk.Label(
             header,
             text="",
             font=("Segoe UI", 11, "bold"),
-            bg=COLORS["bg"],
+            bg=COLORS["surface"],
             fg=COLORS["fg"],
             width=18,
             anchor="center",
         )
-        self.lbl_mes.pack(side="left", padx=10)
-        
-        StyledButton(header, text="▶", bg="#374151", command=self.mes_siguiente).pack(side="left", padx=3)
-        
-        self.btn_lock = StyledButton(header, text="🔓", bg=COLORS["danger"], command=self.toggle_login)
-        self.btn_lock.pack(side="right", padx=8)
+        self.lbl_mes.pack(side="left", padx=8, expand=True)
 
-        cal_container = tk.Frame(parent, bg=COLORS["bg"])
-        cal_container.pack(fill="both", expand=True, padx=6, pady=2)
-        
+        StyledButton(header, text="▶", bg=COLORS["card"], hover_bg=COLORS["hover_soft"], command=self.mes_siguiente, padx=8, pady=2).pack(side="left")
+
+        self.btn_lock = StyledButton(
+            header,
+            text="Login",
+            bg=COLORS["danger"],
+            hover_bg="#DC2626",
+            command=self.toggle_login,
+            padx=8,
+            pady=2,
+        )
+        self.btn_lock.pack(side="right", padx=(8, 0))
+
+        cal_container = tk.Frame(cal_card, bg=COLORS["surface"])
+        cal_container.pack(fill="both", expand=True, padx=8, pady=(0, 6))
+
         dias = ["DOM", "LUN", "MAR", "MIE", "JUE", "VIE", "SAB"]
         for i, d in enumerate(dias):
-            tk.Label(cal_container, text=d, font=("Segoe UI", 8, "bold"), bg=COLORS["bg"], fg=COLORS["muted"], width=6).grid(row=0, column=i, pady=2)
+            tk.Label(
+                cal_container,
+                text=d,
+                font=("Segoe UI", 8, "bold"),
+                bg=COLORS["surface"],
+                fg=COLORS["muted"],
+                anchor="center",
+            ).grid(row=0, column=i, sticky="nsew", padx=2, pady=(0, 2))
 
-        # Keep calendar grid spacing uniform across all columns/rows.
         for col in range(7):
-            cal_container.grid_columnconfigure(col, weight=1, uniform="calendar_cols", minsize=50)
-        cal_container.grid_rowconfigure(0, minsize=22)
+            cal_container.grid_columnconfigure(col, weight=1, uniform="cal_cols", minsize=44)
+        cal_container.grid_rowconfigure(0, minsize=18, weight=0)
         for row in range(1, 7):
-            cal_container.grid_rowconfigure(row, weight=1, uniform="calendar_rows", minsize=36)
+            cal_container.grid_rowconfigure(row, weight=1, uniform="cal_rows", minsize=30)
 
         self.dias_widgets = []
         for i in range(6):
             fila = []
             for j in range(7):
-                btn = self._crear_boton_dia(cal_container, i, j)
-                btn.grid(row=i+1, column=j, padx=1, pady=1, sticky="nsew")
-                fila.append(btn)
+                cell = DayCell(cal_container, on_click=lambda di=i, dj=j: self.seleccionar_dia(di, dj))
+                cell.grid(row=i + 1, column=j, padx=2, pady=2, sticky="nsew")
+                fila.append(cell)
             self.dias_widgets.append(fila)
-        
+
         self.render_calendario()
-        
-        self.info_box = tk.Frame(parent, bg=COLORS["card"])
-        self.info_box.pack(fill="x", padx=6, pady=(4, 2))
+
+        self.info_box = tk.Frame(parent, bg=COLORS["bg"])
+        self.info_box.pack(fill="x", padx=0, pady=(6, 0))
         self.actualizar_info_box()
-
-    def _crear_boton_dia(self, parent, i, j):
-        btn = tk.Button(
-            parent,
-            text="",
-            font=("Segoe UI", 8, "bold"),
-            bg=COLORS["card"],
-            fg=COLORS["fg"],
-            activebackground=COLORS["hover_soft"],
-            relief="flat",
-            bd=0,
-            highlightthickness=1,
-            highlightbackground=COLORS["border"],
-            command=lambda di=i, dj=j: self.seleccionar_dia(di, dj),
-        )
-        btn.bind("<Enter>", lambda _e, b=btn: self._on_day_enter(b))
-        btn.bind("<Leave>", lambda _e, b=btn: self._on_day_leave(b))
-        return btn
-
-    def _on_day_enter(self, btn):
-        if btn.cget("text"):
-            btn.config(cursor="hand2")
-            default_bg = self.day_default_styles.get(btn, {}).get("bg", COLORS["card"])
-            if btn.cget("bg") == default_bg:
-                btn.config(bg=COLORS["hover_soft"], activebackground=COLORS["hover_soft"])
-
-    def _on_day_leave(self, btn):
-        style = self.day_default_styles.get(btn)
-        btn.config(cursor="")
-        if style:
-            btn.config(bg=style["bg"], fg=style["fg"], relief=style["relief"], bd=style["bd"], highlightbackground=style["border"])
 
     def render_calendario(self):
         primer_dia = (date(self.current_year, self.current_month, 1).weekday() + 1) % 7
@@ -315,64 +499,27 @@ class ChecklistApp:
             dias_mes = (date(self.current_year, self.current_month + 1, 1) - date(self.current_year, self.current_month, 1)).days
         
         meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-        self.lbl_mes.config(text=f"{meses[self.current_month-1].upper()} {self.current_year}")
+        self.lbl_mes.config(text=f"{meses[self.current_month-1]} {self.current_year}")
 
         hoy_str = datetime.now().strftime("%Y-%m-%d")
 
         for f in self.dias_widgets:
-            for b in f:
-                b.config(
-                    text="",
-                    bg=COLORS["card"],
-                    fg=COLORS["fg"],
-                    relief="flat",
-                    bd=0,
-                    cursor="",
-                    activebackground=COLORS["hover_soft"],
-                    highlightbackground=COLORS["border"],
-                )
-                self.day_default_styles[b] = {
-                    "bg": COLORS["card"],
-                    "fg": COLORS["fg"],
-                    "relief": "flat",
-                    "bd": 0,
-                    "border": COLORS["border"],
-                }
+            for cell in f:
+                cell.clear()
 
         dia_actual = 1
         for i in range(6):
             for j in range(7):
                 if dia_actual <= dias_mes and (i > 0 or j >= primer_dia):
                     fecha_key = f"{self.current_year}-{self.current_month:02d}-{dia_actual:02d}"
-                    self.dias_widgets[i][j].config(text=f"{dia_actual}")
-                    
+                    cell = self.dias_widgets[i][j]
+                    fill = COLORS["card"]
+                    fg_color = COLORS["fg"]
                     if fecha_key in self.data.get("calendario", {}) and self.data["calendario"][fecha_key]:
                         hipo = self.data["calendario"][fecha_key]
-                        color = HIPODROMOS.get(hipo, {}).get("color", COLORS["card"])
-                        fg_color = "white" if hipo != "Palermo" else "black"
-                        self.dias_widgets[i][j].config(bg=color, fg=fg_color)
-                        self.day_default_styles[self.dias_widgets[i][j]] = {
-                            "bg": color,
-                            "fg": fg_color,
-                            "relief": "flat",
-                            "bd": 0,
-                            "border": COLORS["border"],
-                        }
-                    
-                    if fecha_key == hoy_str:
-                        self.dias_widgets[i][j].config(relief="solid", bd=1, fg="#10B981", highlightbackground=COLORS["accent"])
-                        current_style = self.day_default_styles.get(self.dias_widgets[i][j], {})
-                        self.day_default_styles[self.dias_widgets[i][j]] = {
-                            "bg": current_style.get("bg", COLORS["card"]),
-                            "fg": "#10B981",
-                            "relief": "solid",
-                            "bd": 1,
-                            "border": COLORS["accent"],
-                        }
-                    
-                    if self.admin_mode:
-                        self.dias_widgets[i][j].config(cursor="hand2")
-                    
+                        fill = hipo_color(hipo)
+                        fg_color = hipo_fg(hipo)
+                    cell.set_day(dia_actual, fill, fg_color, today=(fecha_key == hoy_str))
                     dia_actual += 1
 
     def seleccionar_dia(self, fila, columna):
@@ -380,7 +527,7 @@ class ChecklistApp:
             messagebox.showwarning("Bloqueado", "Iniciá sesión para modificar el calendario")
             return
         
-        texto = self.dias_widgets[fila][columna].cget("text")
+        texto = self.dias_widgets[fila][columna].text
         if not texto:
             return
         try:
@@ -391,20 +538,52 @@ class ChecklistApp:
         
         popup = tk.Toplevel(self.root)
         popup.title(f"Asignar - {dia}/{self.current_month}")
-        popup.geometry("280x250")
+        popup.geometry("300x340")
+        popup.resizable(False, False)
         popup.configure(bg=COLORS["bg"])
-        
-        tk.Label(popup, text=f"{dia}/{self.current_month}", 
-                font=("Segoe UI", 12, "bold"), bg=COLORS["bg"], fg="white").pack(pady=15)
-        
+
+        card = tk.Frame(
+            popup,
+            bg=COLORS["surface"],
+            highlightthickness=1,
+            highlightbackground=COLORS["border"],
+        )
+        card.pack(fill="both", expand=True, padx=14, pady=14)
+
+        tk.Label(
+            card,
+            text=f"{dia}/{self.current_month}/{self.current_year}",
+            font=("Segoe UI", 12, "bold"),
+            bg=COLORS["surface"],
+            fg=COLORS["fg"],
+        ).pack(pady=(8, 4))
+        tk.Label(
+            card,
+            text="Elegí el hipódromo",
+            font=("Segoe UI", 8),
+            bg=COLORS["surface"],
+            fg=COLORS["muted"],
+        ).pack(pady=(0, 10))
+
         for nombre, datos in HIPODROMOS.items():
             color = datos["color"]
-            fg = "white" if nombre != "La plata" else "black"
-            StyledButton(popup, text=datos["nombre"], bg=color, 
-                      command=lambda h=nombre, f=fecha_key: self.asignar_hipodromo(h, f, popup)).pack(pady=8, fill="x", padx=40)
-        
-        StyledButton(popup, text="BORRAR", bg=COLORS["danger"], 
-                    command=lambda: self.borrar_hipodromo(fecha_key, popup)).pack(pady=25, fill="x", padx=40)
+            fg = hipo_fg(nombre)
+            StyledButton(
+                card,
+                text=datos["nombre"],
+                bg=color,
+                fg=fg,
+                hover_bg=color,
+                command=lambda h=nombre, f=fecha_key: self.asignar_hipodromo(h, f, popup),
+            ).pack(pady=5, fill="x", padx=28)
+
+        StyledButton(
+            card,
+            text="BORRAR",
+            bg="#6B7280",
+            hover_bg="#4B5563",
+            command=lambda: self.borrar_hipodromo(fecha_key, popup),
+        ).pack(pady=(8, 8), fill="x", padx=28)
 
     def asignar_hipodromo(self, hipodromo, fecha_key, popup):
         if "calendario" not in self.data:
@@ -413,6 +592,7 @@ class ChecklistApp:
         self.guardar_datos()
         self.render_calendario()
         self.actualizar_info_box()
+        self.actualizar_info_paneles()
         popup.destroy()
 
     def borrar_hipodromo(self, fecha_key, popup):
@@ -421,6 +601,7 @@ class ChecklistApp:
             self.guardar_datos()
             self.render_calendario()
             self.actualizar_info_box()
+            self.actualizar_info_paneles()
         popup.destroy()
 
     def mes_anterior(self):
@@ -439,37 +620,35 @@ class ChecklistApp:
         self.render_calendario()
         self.actualizar_info_box()
 
+    def _chip_hipodromo(self, parent, etiqueta, hipo, side):
+        asignado = hipo and hipo in HIPODROMOS
+        color = hipo_color(hipo) if asignado else COLORS["border"]
+        nombre = HIPODROMOS[hipo]["nombre"] if asignado else "Sin carrera"
+        name_fg = color if asignado else COLORS["muted"]
+
+        chip = tk.Frame(parent, bg=color)
+        chip.pack(side=side, fill="both", expand=True, padx=4)
+        accent = tk.Frame(chip, bg=color, height=4)
+        accent.pack(fill="x")
+        body = tk.Frame(chip, bg=COLORS["card"])
+        body.pack(fill="both", expand=True)
+        tk.Label(body, text=etiqueta, font=("Segoe UI", 8), bg=COLORS["card"], fg=COLORS["muted"], pady=2).pack(fill="x", padx=10)
+        tk.Label(body, text=nombre, font=("Segoe UI", 12, "bold"), bg=COLORS["card"], fg=name_fg, pady=6).pack(fill="x", padx=10)
+
     def actualizar_info_box(self):
         from datetime import timedelta
         hoy = datetime.now()
         manana = (hoy + timedelta(days=1)).strftime("%Y-%m-%d")
         fecha_hoy = hoy.strftime("%Y-%m-%d")
-        
+
         hipo_hoy = self.data.get("calendario", {}).get(fecha_hoy, "")
         hipo_manana = self.data.get("calendario", {}).get(manana, "")
-        
+
         for w in self.info_box.winfo_children():
             w.destroy()
-        
-        frame_hoy = tk.Frame(self.info_box, bg=COLORS["bg"])
-        frame_hoy.pack(side="left", fill="both", expand=True, padx=2)
-        
-        color_hoy = HIPODROMOS.get(hipo_hoy, {}).get("color", COLORS["card"]) if hipo_hoy else COLORS["card"]
-        fg_hoy = "white" if hipo_hoy and hipo_hoy != "La plata" else "black"
-        
-        tk.Label(frame_hoy, text="HOY", font=("Segoe UI", 8, "bold"), bg=color_hoy, fg="white", pady=1).pack(fill="x")
-        nombre_hoy = HIPODROMOS.get(hipo_hoy, {}).get("nombre", "-") if hipo_hoy else "-"
-        tk.Label(frame_hoy, text=nombre_hoy, font=("Segoe UI", 9, "bold"), bg=color_hoy, fg=fg_hoy, pady=2).pack(fill="x")
-        
-        frame_manana = tk.Frame(self.info_box, bg=COLORS["bg"])
-        frame_manana.pack(side="right", fill="both", expand=True, padx=2)
-        
-        color_manana = HIPODROMOS.get(hipo_manana, {}).get("color", COLORS["card"]) if hipo_manana else COLORS["card"]
-        fg_manana = "white" if hipo_manana and hipo_manana != "La plata" else "black"
-        
-        tk.Label(frame_manana, text="MAÑANA", font=("Segoe UI", 8, "bold"), bg=color_manana, fg="white", pady=1).pack(fill="x")
-        nombre_manana = HIPODROMOS.get(hipo_manana, {}).get("nombre", "-") if hipo_manana else "-"
-        tk.Label(frame_manana, text=nombre_manana, font=("Segoe UI", 9, "bold"), bg=color_manana, fg=fg_manana, pady=2).pack(fill="x")
+
+        self._chip_hipodromo(self.info_box, "HOY", hipo_hoy, "left")
+        self._chip_hipodromo(self.info_box, "MAÑANA", hipo_manana, "right")
 
     def ir_hoy(self):
         self.current_month = datetime.now().month
@@ -484,51 +663,69 @@ class ChecklistApp:
     
     def actualizar_btn_login(self):
         if self.admin_mode:
-            self.btn_lock.config(text="🔒 CERRAR", bg=COLORS["success"])
+            self.btn_lock.config(text="Cerrar")
+            self.btn_lock.set_bg(COLORS["success"], hover_bg="#0D9F74")
         else:
-            self.btn_lock.config(text="🔓 LOGIN", bg=COLORS["danger"])
+            self.btn_lock.config(text="Login")
+            self.btn_lock.set_bg(COLORS["danger"], hover_bg="#DC2626")
     
     def mostrar_login(self):
         if self.login_popup_abierto:
             return
-        
+
         self.login_popup_abierto = True
         popup = tk.Toplevel(self.root)
         popup.title("Login Admin")
-        popup.geometry("300x220")
+        popup.geometry("320x250")
         popup.resizable(False, False)
         popup.configure(bg=COLORS["bg"])
+        popup.transient(self.root)
 
-        card = tk.Frame(popup, bg=COLORS["surface"], highlightthickness=1, highlightbackground=COLORS["border"])
-        card.pack(fill="both", expand=True, padx=14, pady=14)
+        card = tk.Frame(
+            popup,
+            bg=COLORS["surface"],
+            highlightthickness=1,
+            highlightbackground=COLORS["border"],
+        )
+        card.pack(fill="both", expand=True, padx=16, pady=16)
 
-        tk.Label(card, text="LOGIN ADMIN", font=("Segoe UI", 10, "bold"), bg=COLORS["surface"], fg=COLORS["fg"]).pack(pady=(10, 8))
+        tk.Label(
+            card,
+            text="LOGIN ADMIN",
+            font=("Segoe UI", 11, "bold"),
+            bg=COLORS["surface"],
+            fg=COLORS["fg"],
+        ).pack(pady=(8, 10))
 
         tk.Label(card, text="USUARIO", font=("Segoe UI", 8, "bold"), bg=COLORS["surface"], fg=COLORS["muted"]).pack(anchor="w", padx=14)
+        user_wrap = tk.Frame(card, bg=COLORS["card"], highlightthickness=1, highlightbackground=COLORS["input_border"])
+        user_wrap.pack(fill="x", padx=14, pady=(3, 10))
         entry_user = tk.Entry(
-            card,
+            user_wrap,
             font=("Segoe UI", 10),
             bg=COLORS["card"],
             fg=COLORS["fg"],
             insertbackground=COLORS["fg"],
             relief="flat",
-            bd=0
+            bd=0,
         )
-        entry_user.pack(fill="x", padx=14, pady=(4, 10), ipady=4)
-        
+        entry_user.pack(fill="x", ipady=5, padx=6)
+
         tk.Label(card, text="CLAVE", font=("Segoe UI", 8, "bold"), bg=COLORS["surface"], fg=COLORS["muted"]).pack(anchor="w", padx=14)
+        pass_wrap = tk.Frame(card, bg=COLORS["card"], highlightthickness=1, highlightbackground=COLORS["input_border"])
+        pass_wrap.pack(fill="x", padx=14, pady=(3, 14))
         entry_pass = tk.Entry(
-            card,
+            pass_wrap,
             font=("Segoe UI", 10),
             show="*",
             bg=COLORS["card"],
             fg=COLORS["fg"],
             insertbackground=COLORS["fg"],
             relief="flat",
-            bd=0
+            bd=0,
         )
-        entry_pass.pack(fill="x", padx=14, pady=(4, 12), ipady=4)
-        
+        entry_pass.pack(fill="x", ipady=5, padx=6)
+
         def verificar_login():
             usuario = entry_user.get().strip()
             clave = entry_pass.get().strip()
@@ -541,14 +738,25 @@ class ChecklistApp:
                 messagebox.showinfo("OK", "Sesión iniciada")
             else:
                 messagebox.showerror("Error", "Usuario o clave incorrectos")
-        
+
         def on_popup_close():
             self.login_popup_abierto = False
             popup.destroy()
-        
+
         popup.protocol("WM_DELETE_WINDOW", on_popup_close)
-        
-        StyledButton(card, text="ENTRAR", bg=COLORS["success"], hover_bg="#0D9F74", command=verificar_login).pack(pady=(0, 10))
+        popup.bind("<Return>", lambda _e: verificar_login())
+        entry_user.bind("<Return>", lambda _e: entry_pass.focus_set())
+        entry_pass.bind("<Return>", lambda _e: verificar_login())
+
+        StyledButton(
+            card,
+            text="ENTRAR",
+            bg=COLORS["success"],
+            hover_bg="#0D9F74",
+            command=verificar_login,
+        ).pack(pady=(0, 8))
+
+        entry_user.focus_set()
     
     def cerrar_sesion(self, popup=None):
         self.admin_mode = False
@@ -568,12 +776,20 @@ class ChecklistApp:
     def setup_checklist(self, parent=None):
         if parent is None:
             parent = self.root
-        
-        self.header_frame = tk.Frame(parent, bg=COLORS["surface"], highlightthickness=1, highlightbackground=COLORS["border"])
-        self.header_frame.pack(fill="x", pady=4, padx=6)
-        
+
+        self.header_frame = tk.Frame(
+            parent,
+            bg=COLORS["surface"],
+            highlightthickness=1,
+            highlightbackground=COLORS["border"],
+        )
+        self.header_frame.pack(fill="x", pady=(0, 4), padx=0)
+
+        toggle_group = SegmentedGroup(self.header_frame)
+        toggle_group.pack(side="left", padx=6, pady=4)
+
         self.btn_hoy = SegmentedButton(
-            self.header_frame,
+            toggle_group,
             text="HOY",
             bg=COLORS["accent"],
             activebackground=COLORS["accent"],
@@ -581,10 +797,10 @@ class ChecklistApp:
             hover_bg=COLORS["hover_accent"],
             command=self.mostrar_panel_hoy
         )
-        self.btn_hoy.pack(side="left", padx=(6, 3), pady=4)
-        
+        self.btn_hoy.pack(side="left")
+
         self.btn_manana = SegmentedButton(
-            self.header_frame,
+            toggle_group,
             text="MAÑANA",
             bg=COLORS["card"],
             activebackground=COLORS["card"],
@@ -593,18 +809,26 @@ class ChecklistApp:
             command=self._on_btn_manana_click
         )
         self.btn_manana.config(state="normal")
-        self.btn_manana.pack(side="left", padx=(3, 6), pady=4)
-        
+        self.btn_manana.pack(side="left")
+
         self.panel_actual = "hoy"
-        
-        self.panel_hoy_frame = tk.Frame(parent, bg=COLORS["bg"])
-        self.panel_manana_frame = tk.Frame(parent, bg=COLORS["bg"])
-        self.panel_hoy_frame.configure(highlightthickness=1, highlightbackground=COLORS["border"])
-        self.panel_manana_frame.configure(highlightthickness=1, highlightbackground=COLORS["border"])
-        
+
+        self.panel_hoy_frame = tk.Frame(
+            parent,
+            bg=COLORS["surface"],
+            highlightthickness=1,
+            highlightbackground=COLORS["border"],
+        )
+        self.panel_manana_frame = tk.Frame(
+            parent,
+            bg=COLORS["surface"],
+            highlightthickness=1,
+            highlightbackground=COLORS["border"],
+        )
+
         self.setup_panel_individual(self.panel_hoy_frame, "hoy")
         self.setup_panel_individual(self.panel_manana_frame, "manana")
-        
+
         self.panel_hoy_frame.pack(fill="both", expand=True)
         self.render_checklist_panel("hoy")
         self.panel_manana_frame.pack(fill="both", expand=True)
@@ -614,17 +838,28 @@ class ChecklistApp:
         self.btn_manana.set_active(False)
 
     def setup_panel_individual(self, frame, tipo):
-        header = tk.Frame(frame, bg=COLORS["bg"])
-        header.pack(fill="x", pady=3, padx=6)
-        
+        accent_bar = tk.Frame(frame, bg=COLORS["border"], height=3)
+        accent_bar.pack(fill="x")
+        header = tk.Frame(frame, bg=COLORS["surface"])
+        header.pack(fill="x", pady=4, padx=6)
+
         if tipo == "hoy":
-            self.lbl_titulo_hoy = tk.Label(header, text="", font=("Segoe UI", 10, "bold"), bg=COLORS["bg"], fg=COLORS["fg"])
-            self.lbl_titulo_hoy.pack(side="left", padx=5)
-            self.header_hoy = header
-            
-            self.modo_hoy_var = tk.StringVar(value="dia2")
-            self.btn_modo_d1_hoy = SegmentedButton(
+            self.bar_hoy = accent_bar
+            self.lbl_titulo_hoy = tk.Label(
                 header,
+                text="",
+                font=("Segoe UI", 11, "bold"),
+                bg=COLORS["surface"],
+                fg=COLORS["muted"],
+            )
+            self.lbl_titulo_hoy.pack(side="left", padx=(0, 8))
+            self.header_hoy = header
+
+            self.modo_hoy_var = tk.StringVar(value="dia2")
+            mode_group = SegmentedGroup(header)
+            mode_group.pack(side="left")
+            self.btn_modo_d1_hoy = SegmentedButton(
+                mode_group,
                 text="D1",
                 bg=COLORS["card"],
                 activebackground=COLORS["card"],
@@ -632,9 +867,9 @@ class ChecklistApp:
                 hover_bg=COLORS["hover_soft"],
                 command=lambda: self.set_mode_panel("hoy", "dia1")
             )
-            self.btn_modo_d1_hoy.pack(side="left", padx=2)
+            self.btn_modo_d1_hoy.pack(side="left")
             self.btn_modo_d2_hoy = SegmentedButton(
-                header,
+                mode_group,
                 text="D2",
                 bg=COLORS["accent"],
                 activebackground=COLORS["accent"],
@@ -642,21 +877,36 @@ class ChecklistApp:
                 hover_bg=COLORS["hover_accent"],
                 command=lambda: self.set_mode_panel("hoy", "dia2")
             )
-            self.btn_modo_d2_hoy.pack(side="left", padx=2)
-            
-            self.btn_guardar_hoy = StyledButton(header, text="GUARDAR", bg=COLORS["success"], command=lambda: self.guardar_checklist_panel("hoy"))
-            self.btn_guardar_hoy.pack(side="right", padx=3)
-            
+            self.btn_modo_d2_hoy.pack(side="left")
+
+            self.btn_guardar_hoy = StyledButton(
+                header,
+                text="GUARDAR",
+                bg=COLORS["success"],
+                hover_bg="#0D9F74",
+                command=lambda: self.guardar_checklist_panel("hoy"),
+            )
+            self.btn_guardar_hoy.pack(side="right")
+
             self.check_vars_hoy = {}
             self.checklist_frame_hoy = self.crear_checklist_frame(frame)
         else:
-            self.lbl_titulo_manana = tk.Label(header, text="", font=("Segoe UI", 10, "bold"), bg=COLORS["bg"], fg=COLORS["fg"])
-            self.lbl_titulo_manana.pack(side="left", padx=5)
-            self.header_manana = header
-            
-            self.modo_manana_var = tk.StringVar(value="dia1")
-            self.btn_modo_d1_manana = SegmentedButton(
+            self.bar_manana = accent_bar
+            self.lbl_titulo_manana = tk.Label(
                 header,
+                text="",
+                font=("Segoe UI", 11, "bold"),
+                bg=COLORS["surface"],
+                fg=COLORS["muted"],
+            )
+            self.lbl_titulo_manana.pack(side="left", padx=(0, 8))
+            self.header_manana = header
+
+            self.modo_manana_var = tk.StringVar(value="dia1")
+            mode_group = SegmentedGroup(header)
+            mode_group.pack(side="left")
+            self.btn_modo_d1_manana = SegmentedButton(
+                mode_group,
                 text="D1",
                 bg=COLORS["accent"],
                 activebackground=COLORS["accent"],
@@ -664,9 +914,9 @@ class ChecklistApp:
                 hover_bg=COLORS["hover_accent"],
                 command=lambda: self.set_mode_panel("manana", "dia1")
             )
-            self.btn_modo_d1_manana.pack(side="left", padx=2)
+            self.btn_modo_d1_manana.pack(side="left")
             self.btn_modo_d2_manana = SegmentedButton(
-                header,
+                mode_group,
                 text="D2",
                 bg=COLORS["card"],
                 activebackground=COLORS["card"],
@@ -674,12 +924,18 @@ class ChecklistApp:
                 hover_bg=COLORS["hover_soft"],
                 command=lambda: self.set_mode_panel("manana", "dia2")
             )
-            self.btn_modo_d2_manana.pack(side="left", padx=2)
+            self.btn_modo_d2_manana.pack(side="left")
             self.btn_modo_d2_manana.set_enabled(False)
-            
-            self.btn_guardar_manana = StyledButton(header, text="GUARDAR", bg=COLORS["success"], command=lambda: self.guardar_checklist_panel("manana"))
-            self.btn_guardar_manana.pack(side="right", padx=3)
-            
+
+            self.btn_guardar_manana = StyledButton(
+                header,
+                text="GUARDAR",
+                bg=COLORS["success"],
+                hover_bg="#0D9F74",
+                command=lambda: self.guardar_checklist_panel("manana"),
+            )
+            self.btn_guardar_manana.pack(side="right")
+
             self.check_vars_manana = {}
             self.checklist_frame_manana = self.crear_checklist_frame(frame)
 
@@ -687,7 +943,7 @@ class ChecklistApp:
 
     def crear_checklist_frame(self, parent):
         container = tk.Frame(parent, bg=COLORS["surface"])
-        container.pack(fill="both", expand=True, padx=2, pady=1)
+        container.pack(fill="both", expand=True, padx=4, pady=(0, 4))
         frame = tk.Frame(container, bg=COLORS["surface"])
         frame.pack(fill="both", expand=True)
         return frame
@@ -723,30 +979,44 @@ class ChecklistApp:
         if hipo_hoy and hipo_hoy in HIPODROMOS:
             nombre = HIPODROMOS[hipo_hoy]["nombre"]
             color = HIPODROMOS[hipo_hoy]["color"]
-            fg = "white" if hipo_hoy != "La plata" else "black"
-            self.lbl_titulo_hoy.config(text=f"HOY - {nombre}", fg=fg, bg=color)
-            self.panel_hoy_frame.configure(bg=color)
-            if hasattr(self, 'header_hoy'):
-                self.header_hoy.configure(bg=color)
+            self.lbl_titulo_hoy.config(text=nombre, fg=color, bg=COLORS["surface"])
+            self.bar_hoy.configure(bg=color)
+            self.panel_hoy_frame.configure(bg=COLORS["surface"])
+            if hasattr(self, "header_hoy"):
+                self.header_hoy.configure(bg=COLORS["surface"])
+            self.btn_hoy.set_accent(color, hipo_fg(hipo_hoy))
+            self.btn_modo_d1_hoy.set_accent(color, hipo_fg(hipo_hoy))
+            self.btn_modo_d2_hoy.set_accent(color, hipo_fg(hipo_hoy))
         else:
-            self.lbl_titulo_hoy.config(text="HOY - SIN CARRERA", fg="#9CA3AF", bg=COLORS["bg"])
-            self.panel_hoy_frame.configure(bg=COLORS["bg"])
-            if hasattr(self, 'header_hoy'):
-                self.header_hoy.configure(bg=COLORS["bg"])
+            self.lbl_titulo_hoy.config(text="Sin carrera", fg=COLORS["muted"], bg=COLORS["surface"])
+            self.bar_hoy.configure(bg=COLORS["border"])
+            self.panel_hoy_frame.configure(bg=COLORS["surface"])
+            if hasattr(self, "header_hoy"):
+                self.header_hoy.configure(bg=COLORS["surface"])
+            self.btn_hoy.set_accent(COLORS["accent"], COLORS["fg"])
+            self.btn_modo_d1_hoy.set_accent(COLORS["accent"], COLORS["fg"])
+            self.btn_modo_d2_hoy.set_accent(COLORS["accent"], COLORS["fg"])
 
         if hipo_manana and hipo_manana in HIPODROMOS:
             nombre = HIPODROMOS[hipo_manana]["nombre"]
             color = HIPODROMOS[hipo_manana]["color"]
-            fg = "white" if hipo_manana != "La plata" else "black"
-            self.lbl_titulo_manana.config(text=f"MAÑANA - {nombre}", fg=fg, bg=color)
-            self.panel_manana_frame.configure(bg=color)
-            if hasattr(self, 'header_manana'):
-                self.header_manana.configure(bg=color)
+            self.lbl_titulo_manana.config(text=nombre, fg=color, bg=COLORS["surface"])
+            self.bar_manana.configure(bg=color)
+            self.panel_manana_frame.configure(bg=COLORS["surface"])
+            if hasattr(self, "header_manana"):
+                self.header_manana.configure(bg=COLORS["surface"])
+            self.btn_manana.set_accent(color, hipo_fg(hipo_manana))
+            self.btn_modo_d1_manana.set_accent(color, hipo_fg(hipo_manana))
+            self.btn_modo_d2_manana.set_accent(color, hipo_fg(hipo_manana))
         else:
-            self.lbl_titulo_manana.config(text="MAÑANA - SIN CARRERA", fg="#9CA3AF", bg=COLORS["bg"])
-            self.panel_manana_frame.configure(bg=COLORS["bg"])
-            if hasattr(self, 'header_manana'):
-                self.header_manana.configure(bg=COLORS["bg"])
+            self.lbl_titulo_manana.config(text="Sin carrera", fg=COLORS["muted"], bg=COLORS["surface"])
+            self.bar_manana.configure(bg=COLORS["border"])
+            self.panel_manana_frame.configure(bg=COLORS["surface"])
+            if hasattr(self, "header_manana"):
+                self.header_manana.configure(bg=COLORS["surface"])
+            self.btn_manana.set_accent(COLORS["accent"], COLORS["fg"])
+            self.btn_modo_d1_manana.set_accent(COLORS["accent"], COLORS["fg"])
+            self.btn_modo_d2_manana.set_accent(COLORS["accent"], COLORS["fg"])
 
         estado_hoy = self.data.get("estado", {}).get(fecha_hoy, "")
         estado_manana = self.data.get("estado", {}).get(manana, "")
@@ -758,6 +1028,11 @@ class ChecklistApp:
             self.modo_hoy_var.set("dia2")
         if estado_manana in ("dia1_completado", "completo") and self.modo_manana_var.get() == "dia1":
             self.modo_manana_var.set("dia2")
+
+        self.btn_hoy.set_active(self.panel_actual == "hoy")
+        self.btn_manana.set_active(self.panel_actual == "manana")
+        self.update_mode_toggle("hoy")
+        self.update_mode_toggle("manana")
 
     def set_mode_panel(self, panel, modo):
         """
@@ -793,6 +1068,93 @@ class ChecklistApp:
         else:
             self.btn_modo_d1_manana.set_active(self.modo_manana_var.get() == "dia1")
             self.btn_modo_d2_manana.set_active(self.modo_manana_var.get() == "dia2")
+
+    def _crear_fila_check(self, parent, item, check_vars, hipo, accent, mark_fg, is_setear, wrap_len):
+        var = tk.BooleanVar(value=False)
+        check_vars[item] = var
+        row_bg = hipo_checked(hipo) if hipo in HIPODROMOS else COLORS["row"]
+        text_fg = hipo_fg(hipo) if hipo in HIPODROMOS else COLORS["fg"]
+        checked_bg = hipo_color(hipo) if hipo in HIPODROMOS else COLORS["row_hover"]
+
+        frame_item = tk.Frame(parent, bg=row_bg, cursor="hand2")
+        bar = tk.Frame(frame_item, bg=accent, width=4, cursor="hand2")
+        bar.pack(side="left", fill="y")
+        bar.pack_propagate(False)
+
+        inner = tk.Frame(frame_item, bg=row_bg, cursor="hand2")
+        inner.pack(side="left", fill="both", expand=True, padx=5, pady=2)
+
+        mark = CheckMark(inner, var, accent, mark_fg=mark_fg, bg=row_bg)
+        mark.pack(side="left", padx=(0, 6))
+
+        labels = []
+        if is_setear:
+            hipo_nombre = HIPODROMOS.get(hipo, {}).get("nombre", "SIN ASIGNAR")
+            label_setear = tk.Label(
+                inner,
+                text="SETEAR CATEGORIA  ·",
+                font=("Segoe UI", 8, "bold"),
+                bg=row_bg,
+                fg=text_fg,
+                cursor="hand2",
+            )
+            label_setear.pack(side="left", padx=(0, 4))
+            label_alerta = tk.Label(
+                inner,
+                text=hipo_nombre,
+                font=("Segoe UI", 11, "bold"),
+                bg=row_bg,
+                fg="#FF0000",
+                cursor="hand2",
+            )
+            label_alerta.pack(side="left")
+            labels.extend([label_setear, label_alerta])
+
+            blink_idx = [0]
+
+            def blink_loop():
+                if not label_alerta.winfo_exists():
+                    return
+                label_alerta.config(fg=["#FF0000", "#FFFFFF"][blink_idx[0] % 2])
+                blink_idx[0] = (blink_idx[0] + 1) % 2
+                label_alerta.after(600, blink_loop)
+
+            blink_loop()
+        else:
+            lbl = tk.Label(
+                inner,
+                text=item,
+                font=("Segoe UI", 8, "bold"),
+                bg=row_bg,
+                fg=text_fg,
+                anchor="w",
+                justify="left",
+                wraplength=wrap_len,
+                cursor="hand2",
+            )
+            lbl.pack(side="left", fill="x", expand=True)
+            labels.append(lbl)
+
+        def paint(bg):
+            frame_item.configure(bg=bg)
+            inner.configure(bg=bg)
+            mark.set_bg(bg)
+            for lab in labels:
+                lab.configure(bg=bg)
+
+        def on_toggle(*_args):
+            paint(checked_bg if var.get() else row_bg)
+
+        def toggle(_event=None):
+            var.set(not var.get())
+            return "break"
+
+        var.trace_add("write", on_toggle)
+
+        for widget in (frame_item, bar, inner, *labels):
+            widget.bind("<Button-1>", toggle)
+
+        return frame_item
 
     def render_checklist_panel(self, panel, force=False):
         """
@@ -851,61 +1213,67 @@ class ChecklistApp:
             for w in frame.winfo_children():
                 w.destroy()
 
-            box = tk.Frame(frame, bg=COLORS["surface"], highlightthickness=1, highlightbackground=COLORS["border"])
-            box.pack(fill="x", padx=6, pady=8)
+            box = tk.Frame(frame, bg=COLORS["card"])
+            box.pack(fill="x", padx=12, pady=10)
+            tk.Frame(box, bg=COLORS["success"], height=3).pack(fill="x")
             tk.Label(
                 box,
-                text="DIA 1 COMPLETADO",
-                font=("Segoe UI", 10, "bold"),
-                bg=COLORS["surface"],
+                text="Día 1 completado",
+                font=("Segoe UI", 11, "bold"),
+                bg=COLORS["card"],
                 fg=COLORS["success"],
-                pady=8,
+                pady=6,
             ).pack()
             tk.Label(
                 box,
-                text="D2 habilitado. Continuá con DIA 2.",
+                text="D2 habilitado. Continuá con Día 2.",
                 font=("Segoe UI", 8),
-                bg=COLORS["surface"],
+                bg=COLORS["card"],
                 fg=COLORS["fg"],
-                pady=4,
+                pady=2,
             ).pack()
-            StyledButton(box, text="IR A D2", bg=COLORS["accent"], command=lambda p=panel: self.set_mode_panel(p, "dia2")).pack(pady=(2, 10))
+            StyledButton(
+                box,
+                text="Ir a D2",
+                bg=COLORS["accent"],
+                hover_bg=COLORS["hover_accent"],
+                command=lambda p=panel: self.set_mode_panel(p, "dia2"),
+            ).pack(pady=(4, 10))
             return
         
         if modo == "dia1":
             items = CHECKLIST_DIA1
         else:
             hipo = self.data.get("calendario", {}).get(fecha_key, "")
-            items = CHECKLIST_DIA2_POR_HIPODROMO.get(hipo, CHECKLIST_DIA2_SAN_ISIDRO)
+            items = CHECKLIST_DIA2_POR_HIPODROMO.get(hipo, [])
+            if hipo not in ("Sin hipodromo",) and not items:
+                items = CHECKLIST_DIA2_SAN_ISIDRO
         
         hipo = self.data.get("calendario", {}).get(fecha_key, "")
-        
-        bg_color = COLORS["card_soft"]
-        fg_color = COLORS["fg"]
-        
-        if hipo and hipo in HIPODROMOS:
-            bg_color = HIPODROMOS[hipo]["color"]
-            fg_color = "white" if hipo != "Palermo" else "black"
-        
-        checked_color = COLORS["success"]
-        if hipo and hipo in HIPODROMOS:
-            checked_color = HIPODROMOS[hipo].get("checked", COLORS["success"])
-        
+        accent = hipo_color(hipo, COLORS["accent"])
+        mark_fg = hipo_fg(hipo) if hipo in HIPODROMOS else "white"
+
         for w in frame.winfo_children():
             w.destroy()
-        
+
+        if not items:
+            tk.Label(
+                frame,
+                text="Sin hipódromo: no hay checklist de Día 2.",
+                font=("Segoe UI", 9),
+                bg=COLORS["surface"],
+                fg=COLORS["muted"],
+            ).pack(pady=16)
+            return
+
         container = frame.master
         container.update_idletasks()
-        
         frame.update_idletasks()
         cols = 2
         wrap_len = 180
         row_items = {}
-        # FIX: Usar max_items fijo (14) para mantener uniforme el tamaño de filas
-        # Esto evita que La Plata (10 items) se vea diferente que San Isidro (13 items)
         max_items = 14
         row_count = max(1, (max_items + cols - 1) // cols)
-        target_row_height = 26
 
         for r in range(0, 20):
             frame.rowconfigure(r, weight=0, minsize=0)
@@ -913,125 +1281,21 @@ class ChecklistApp:
         for idx, item in enumerate(items):
             row = idx % row_count
             col = idx // row_count
-            
-            frame_item = tk.Frame(
-                frame,
-                bg=bg_color,
-                pady=3,
-                padx=5,
-                relief="flat",
-                bd=0,
-                highlightthickness=1,
-                highlightbackground=COLORS["border"]
-            )
-            frame_item.grid(row=row, column=col, sticky="nsew", pady=1, padx=1)
+            is_setear = modo == "dia2" and item == "SETEAR CATEGORIA"
+            frame_item = self._crear_fila_check(frame, item, check_vars, hipo, accent, mark_fg, is_setear, wrap_len)
+            frame_item.grid(row=row, column=col, sticky="nsew", pady=1, padx=2)
             row_items.setdefault(row, []).append(frame_item)
-            
-            var = tk.BooleanVar(value=False)
-            check_vars[item] = var
-            
-            if modo == "dia2" and item == "SETEAR CATEGORIA":
-                hipo_nombre = HIPODROMOS.get(hipo, {}).get("nombre", "SIN ASIGNAR")
-                
-                inner_frame = tk.Frame(frame_item, bg=bg_color)
-                inner_frame.pack(fill="both", expand=True, padx=2, pady=2)
-                
-                cb = tk.Checkbutton(
-                    inner_frame,
-                    text="",
-                    variable=var,
-                    bg=bg_color,
-                    fg=fg_color,
-                    selectcolor="#22C55E",
-                    activebackground=bg_color,
-                    activeforeground=fg_color,
-                    font=("Segoe UI", 9, "bold"),
-                    bd=0,
-                    relief="flat",
-                    indicatoron=True,
-                )
-                cb.pack(side="left", padx=(0, 4), anchor="center", fill="none")
-                
-                label_setear = tk.Label(
-                    inner_frame,
-                    text="SETEAR CATEGORIA -",
-                    font=("Segoe UI", 9, "bold"),
-                    bg=bg_color,
-                    fg=fg_color,
-                )
-                label_setear.pack(side="left", padx=2, anchor="center")
-                
-                label_alerta = tk.Label(
-                    inner_frame,
-                    text=hipo_nombre,
-                    font=("Segoe UI", 14, "bold"),
-                    bg=bg_color,
-                    fg="#FF0000"
-                )
-                label_alerta.pack(side="left", padx=2, anchor="center")
-                
-                blinking = [True]
-                blink_colors = ["#FF0000", "#FFFFFF"]
-                blink_idx = [0]
-                blink_timer = [None]
-                
-                def blink_loop():
-                    label_alerta.config(fg=blink_colors[blink_idx[0] % 2])
-                    blink_idx[0] = (blink_idx[0] + 1) % 2
-                    blink_timer[0] = label_alerta.after(600, blink_loop)
-                
-                blink_loop()
-                
-                def on_toggle(*args, fi=frame_item, inf=inner_frame, ob=bg_color, v=var, cc=checked_color):
-                    bg = cc if v.get() else ob
-                    fi.configure(bg=bg)
-                    inf.configure(bg=bg)
-                    for c in inf.winfo_children():
-                        try:
-                            c.configure(bg=bg)
-                        except tk.TclError:
-                            pass
-                var.trace_add("write", on_toggle)
-            else:
-                cb = tk.Checkbutton(
-                    frame_item,
-                    text=item,
-                    variable=var,
-                    bg=bg_color,
-                    fg=fg_color,
-                    selectcolor="#22C55E",
-                    activebackground=bg_color,
-                    activeforeground=fg_color,
-                    font=("Segoe UI", 9, "bold"),
-                    anchor="w",
-                    justify="left",
-                    wraplength=wrap_len,
-                    bd=0,
-                    relief="flat",
-                )
-                cb.pack(fill="x", expand=True)
-                
-                def on_toggle(*args, fi=frame_item, ob=bg_color, v=var, cc=checked_color):
-                    bg = cc if v.get() else ob
-                    fi.configure(bg=bg)
-                    for c in fi.winfo_children():
-                        try:
-                            c.configure(bg=bg)
-                        except tk.TclError:
-                            pass
-                var.trace_add("write", on_toggle)
-            
-                frame.update_idletasks()
+            frame.update_idletasks()
+
         for row, row_frames in row_items.items():
-            target_height = 34
+            target_height = 32
             frame.rowconfigure(row, weight=1, minsize=target_height)
-            for item in row_frames:
-                item.grid_propagate(False)
-                item.configure(height=target_height)
+            for item_frame in row_frames:
+                item_frame.grid_propagate(False)
+                item_frame.configure(height=target_height)
 
         frame.columnconfigure(0, weight=1)
         frame.columnconfigure(1, weight=1)
-        print(f"RENDER DONE panel={panel}")
 
     def guardar_checklist_panel(self, panel):
         """
@@ -1136,23 +1400,53 @@ class ChecklistApp:
 
         for w in frame.winfo_children():
             w.destroy()
-        
-        container = tk.Frame(frame, bg=COLORS["success"], highlightthickness=1, highlightbackground=COLORS["border"])
-        container.pack(fill="x", padx=6, pady=10)
-        
-        tk.Label(container, text="✓ CHECKLIST COMPLETO", 
-               font=("Segoe UI", 12, "bold"), bg=COLORS["success"], fg="white").pack(pady=10)
-        
-        btn_frame = tk.Frame(container, bg=COLORS["success"])
-        btn_frame.pack(pady=5, fill="x", expand=True)
-        
-        btn_imprimir = tk.Button(btn_frame, text="📄 IMPRIMIR", bg="white", fg=COLORS["success"],
-                                font=("Segoe UI", 9, "bold"), command=lambda: self.imprimir_pdf_panel(panel))
-        btn_imprimir.pack(side="left", padx=10, pady=5)
-        
-        btn_reiniciar = tk.Button(btn_frame, text="🔄 REINICIAR", bg=COLORS["danger"], fg="white",
-                                  font=("Segoe UI", 9, "bold"), command=lambda: self.reiniciar_panel(panel))
-        btn_reiniciar.pack(side="left", padx=10, pady=5)
+
+        container = tk.Frame(frame, bg=COLORS["card"])
+        container.pack(fill="x", padx=12, pady=10)
+        tk.Frame(container, bg=COLORS["success"], height=3).pack(fill="x")
+
+        tk.Label(
+            container,
+            text="Checklist completo",
+            font=("Segoe UI", 12, "bold"),
+            bg=COLORS["card"],
+            fg=COLORS["success"],
+        ).pack(pady=(8, 2))
+
+        tk.Label(
+            container,
+            text="Guardá el PDF, previsualizá para imprimir o reiniciá.",
+            font=("Segoe UI", 8),
+            bg=COLORS["card"],
+            fg=COLORS["muted"],
+        ).pack(pady=(0, 6))
+
+        btn_frame = tk.Frame(container, bg=COLORS["card"])
+        btn_frame.pack(pady=(0, 8))
+
+        StyledButton(
+            btn_frame,
+            text="Imprimir",
+            bg=COLORS["success"],
+            hover_bg="#0D9F74",
+            command=lambda: self.imprimir_directo_panel(panel),
+        ).pack(side="left", padx=4)
+
+        StyledButton(
+            btn_frame,
+            text="Guardar PDF",
+            bg=COLORS["info"],
+            hover_bg="#0891B2",
+            command=lambda: self.guardar_pdf_panel(panel),
+        ).pack(side="left", padx=4)
+
+        StyledButton(
+            btn_frame,
+            text="Reiniciar",
+            bg=COLORS["danger"],
+            hover_bg="#DC2626",
+            command=lambda: self.reiniciar_panel(panel),
+        ).pack(side="left", padx=4)
 
     def reiniciar_panel(self, panel):
         from datetime import timedelta
@@ -1203,25 +1497,41 @@ class ChecklistApp:
             self.btn_manana.set_active(True)
             self.panel_manana_frame.pack(fill="both", expand=True)
 
-    def imprimir_pdf_panel(self, panel):
+    def _datos_panel(self, panel):
         from datetime import timedelta
         hoy = datetime.now()
         manana = (hoy + timedelta(days=1)).strftime("%Y-%m-%d")
         fecha_hoy = hoy.strftime("%Y-%m-%d")
-        
         if panel == "hoy":
-            fecha_key = fecha_hoy
-            titulo_panel = "HOY"
-        else:
-            fecha_key = manana
-            titulo_panel = "MAÑANA"
-        
+            return fecha_hoy, "HOY"
+        return manana, "MAÑANA"
+
+    def guardar_pdf_panel(self, panel):
+        fecha_key, _titulo = self._datos_panel(panel)
         hipodromo = self.data.get("calendario", {}).get(fecha_key, "No asignado")
-        
         nombre_archivo = f"Checklist_{hipodromo.replace(' ', '_')}_{fecha_key}.pdf"
         archivo = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF", "*.pdf")], initialfile=nombre_archivo)
         if not archivo:
             return
+        self._generar_pdf(panel, archivo)
+        messagebox.showinfo("PDF", f"PDF guardado: {archivo}")
+
+    def imprimir_directo_panel(self, panel):
+        fecha_key, _titulo = self._datos_panel(panel)
+        hipodromo = self.data.get("calendario", {}).get(fecha_key, "No asignado")
+        archivo = os.path.join(tempfile.gettempdir(), f"Checklist_{hipodromo.replace(' ', '_')}_{fecha_key}.pdf")
+        self._generar_pdf(panel, archivo)
+        try:
+            os.startfile(archivo)
+        except OSError:
+            messagebox.showerror("Imprimir", "No se pudo abrir la vista previa. Probá Guardar PDF.")
+
+    def imprimir_pdf_panel(self, panel):
+        self.guardar_pdf_panel(panel)
+
+    def _generar_pdf(self, panel, archivo):
+        fecha_key, _titulo = self._datos_panel(panel)
+        hipodromo = self.data.get("calendario", {}).get(fecha_key, "No asignado")
 
         doc = SimpleDocTemplate(archivo, pagesize=letter)
         story = []
@@ -1275,7 +1585,9 @@ class ChecklistApp:
         story.append(Spacer(1, 10))
 
         items_d1 = CHECKLIST_DIA1
-        items_d2 = CHECKLIST_DIA2_POR_HIPODROMO.get(hipo, CHECKLIST_DIA2_SAN_ISIDRO)
+        items_d2 = CHECKLIST_DIA2_POR_HIPODROMO.get(hipo, [])
+        if hipo != "Sin hipodromo" and not items_d2:
+            items_d2 = CHECKLIST_DIA2_SAN_ISIDRO
 
         def build_inner_table(title, items):
             data = [[title, "", ""]]
@@ -1325,7 +1637,6 @@ class ChecklistApp:
             story.append(Paragraph("✗ REUNIÓN INCOMPLETA", status_bad_style))
 
         doc.build(story)
-        messagebox.showinfo("PDF", f"PDF guardado: {archivo}")
 
 if __name__ == "__main__":
     root = tk.Tk()
