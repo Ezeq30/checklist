@@ -400,6 +400,14 @@ class ChecklistApp:
         with open(DATA_FILE, "w", encoding="utf-8") as f:
             json.dump(self.data, f, indent=2, ensure_ascii=False)
 
+    def _guardar_progreso_check(self, fecha_key, item, valor):
+        if "checklist" not in self.data:
+            self.data["checklist"] = {}
+        if fecha_key not in self.data["checklist"]:
+            self.data["checklist"][fecha_key] = {}
+        self.data["checklist"][fecha_key][item] = valor
+        self.guardar_datos()
+
     def setup_ui(self):
         main_frame = tk.Frame(self.root, bg=COLORS["bg"])
         main_frame.pack(fill="both", expand=True, padx=6, pady=6)
@@ -954,7 +962,8 @@ class ChecklistApp:
         self.btn_manana.set_active(False)
         self.panel_manana_frame.pack_forget()
         self.panel_hoy_frame.pack(fill="both", expand=True)
-        self.render_checklist_panel("hoy")
+        if not self.checklist_frame_hoy.winfo_children():
+            self.render_checklist_panel("hoy")
 
     def _on_btn_manana_click(self):
         self.mostrar_panel_manana()
@@ -965,7 +974,8 @@ class ChecklistApp:
         self.btn_manana.set_active(True)
         self.panel_hoy_frame.pack_forget()
         self.panel_manana_frame.pack(fill="both", expand=True)
-        self.render_checklist_panel("manana", force=True)
+        if not self.checklist_frame_manana.winfo_children():
+            self.render_checklist_panel("manana")
 
     def actualizar_info_paneles(self):
         from datetime import timedelta
@@ -1069,8 +1079,9 @@ class ChecklistApp:
             self.btn_modo_d1_manana.set_active(self.modo_manana_var.get() == "dia1")
             self.btn_modo_d2_manana.set_active(self.modo_manana_var.get() == "dia2")
 
-    def _crear_fila_check(self, parent, item, check_vars, hipo, accent, mark_fg, is_setear, wrap_len):
-        var = tk.BooleanVar(value=False)
+    def _crear_fila_check(self, parent, item, check_vars, hipo, accent, mark_fg, is_setear, wrap_len, fecha_key):
+        guardado = bool(self.data.get("checklist", {}).get(fecha_key, {}).get(item, False))
+        var = tk.BooleanVar(value=guardado)
         check_vars[item] = var
         row_bg = hipo_checked(hipo) if hipo in HIPODROMOS else COLORS["row"]
         text_fg = hipo_fg(hipo) if hipo in HIPODROMOS else COLORS["fg"]
@@ -1144,12 +1155,15 @@ class ChecklistApp:
 
         def on_toggle(*_args):
             paint(checked_bg if var.get() else row_bg)
+            self._guardar_progreso_check(fecha_key, item, var.get())
 
         def toggle(_event=None):
             var.set(not var.get())
             return "break"
 
         var.trace_add("write", on_toggle)
+        if var.get():
+            paint(checked_bg)
 
         for widget in (frame_item, bar, inner, *labels):
             widget.bind("<Button-1>", toggle)
@@ -1282,7 +1296,7 @@ class ChecklistApp:
             row = idx % row_count
             col = idx // row_count
             is_setear = modo == "dia2" and item == "SETEAR CATEGORIA"
-            frame_item = self._crear_fila_check(frame, item, check_vars, hipo, accent, mark_fg, is_setear, wrap_len)
+            frame_item = self._crear_fila_check(frame, item, check_vars, hipo, accent, mark_fg, is_setear, wrap_len, fecha_key)
             frame_item.grid(row=row, column=col, sticky="nsew", pady=1, padx=2)
             row_items.setdefault(row, []).append(frame_item)
             frame.update_idletasks()

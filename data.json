@@ -274,8 +274,8 @@
       "SETEAR VIDEOS POR MEET": true
     },
     "2026-08-14": {
-      "FECHA Y ESTADO": true,
       "MEET Y PERFORMANCE": true,
+      "FECHA Y ESTADO": true,
       "CALC PRICES": true,
       "REGLA DE CALCULO POR CARRERA": true,
       "CABALLOS Y APUESTAS POR CARRERA": true,
@@ -295,16 +295,15 @@
       "PONER TIPS EN SERVICIO": true,
       "PONER TERMINALES EN SERVICIO": true,
       "RESETEAR TERMINALES": true,
-      "TELLER VOUCHER LIMIT $500,000": true,
-      "ABRIR LA VENTA A LA HORA INDICADA": true,
-      "CANAL 26 ASIGNACION 29": true,
       "GENERAR DETALLE": true,
-      "CARGAR EL VIDEO EN LA APP MOBILE": true
+      "CANAL 26 ASIGNACION 29": true,
+      "ABRIR LA VENTA A LA HORA INDICADA": true,
+      "TELLER VOUCHER LIMIT $500,000": true
     }
   },
   "estado": {
     "2026-08-12": "completo",
     "2026-08-13": "completo",
-    "2026-08-14": "completo"
+    "2026-08-14": "dia1_completado"
   }
 }

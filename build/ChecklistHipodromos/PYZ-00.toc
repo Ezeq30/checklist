@@ -1,4 +1,4 @@
-('C:\\Users\\cdiaz\\Desktop\\Check V2\\build\\ChecklistHipodromos\\PYZ-00.pyz',
+('C:\\Users\\cdiaz\\Desktop\\Check\\build\\ChecklistHipodromos\\PYZ-00.pyz',
  [('PIL',
    'C:\\Users\\cdiaz\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\site-packages\\PIL\\__init__.py',
    'PYMODULE'),
