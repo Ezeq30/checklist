@@ -389,6 +389,8 @@ class ChecklistApp:
         # Esto asegura que si D1 ya estaba completado, D2 se habilite correctamente
         self.actualizar_info_paneles()
         self.actualizar_info_paneles()
+        self._fecha_actual = date.today()
+        self.root.after(60000, self._refresco_periodico)
 
     def cargar_datos(self):
         if os.path.exists(DATA_FILE):
@@ -407,6 +409,65 @@ class ChecklistApp:
             self.data["checklist"][fecha_key] = {}
         self.data["checklist"][fecha_key][item] = valor
         self.guardar_datos()
+
+    def _xml_si_pendiente(self):
+        from datetime import timedelta
+        hoy = date.today()
+        subidos = self.data.get("xml_si", {})
+        for fecha_key in sorted(self.data.get("calendario", {})):
+            if self.data["calendario"][fecha_key] != "San isidro" or subidos.get(fecha_key):
+                continue
+            try:
+                fecha = date.fromisoformat(fecha_key)
+            except ValueError:
+                continue
+            if fecha - timedelta(days=2) <= hoy <= fecha:
+                return fecha_key
+        return None
+
+    def actualizar_alerta_xml(self):
+        self._xml_pendiente = self._xml_si_pendiente()
+        if self._xml_pendiente and self.panel_actual == "hoy":
+            dia_mes = f"{self._xml_pendiente[8:10]}/{self._xml_pendiente[5:7]}"
+            self.lbl_alerta_xml.config(text=f"SUBIR EL XML DE SI ({dia_mes})")
+            if not self.alerta_xml_frame.winfo_manager():
+                self.alerta_xml_frame.pack(side="right", padx=6, pady=4)
+        else:
+            self.alerta_xml_frame.pack_forget()
+
+    def marcar_xml_subido(self):
+        fecha_key = self._xml_pendiente
+        if not fecha_key:
+            return
+        dia_mes = f"{fecha_key[8:10]}/{fecha_key[5:7]}"
+        if not messagebox.askyesno("XML San Isidro", f"¿Confirmás que subiste el XML de SI del {dia_mes}?"):
+            return
+        self.data.setdefault("xml_si", {})[fecha_key] = True
+        self.guardar_datos()
+        self.actualizar_alerta_xml()
+
+    def _blink_alerta_xml(self, idx):
+        if not self.lbl_alerta_xml.winfo_exists():
+            return
+        self.lbl_alerta_xml.config(fg=["#FF0000", "#FFFFFF"][idx % 2])
+        self.root.after(600, lambda: self._blink_alerta_xml((idx + 1) % 2))
+
+    def _aviso_d2_bloqueado(self, boton):
+        if not boton._enabled:
+            messagebox.showwarning("Día 1 pendiente", "Todavía no se completó el Día 1.\nCompletá y guardá el Día 1 para poder pasar al Día 2.")
+
+    def _refresco_periodico(self):
+        if date.today() != self._fecha_actual:
+            self._fecha_actual = date.today()
+            self.render_calendario()
+            self.actualizar_info_box()
+            self.actualizar_info_paneles()
+            self.render_checklist_panel("hoy")
+            if self.checklist_frame_manana.winfo_children():
+                self.render_checklist_panel("manana")
+        else:
+            self.actualizar_alerta_xml()
+        self.root.after(60000, self._refresco_periodico)
 
     def setup_ui(self):
         main_frame = tk.Frame(self.root, bg=COLORS["bg"])
@@ -819,6 +880,25 @@ class ChecklistApp:
         self.btn_manana.config(state="normal")
         self.btn_manana.pack(side="left")
 
+        self.alerta_xml_frame = tk.Frame(self.header_frame, bg=COLORS["surface"])
+        StyledButton(
+            self.alerta_xml_frame,
+            text="LISTO",
+            bg=COLORS["danger"],
+            hover_bg="#DC2626",
+            command=self.marcar_xml_subido,
+        ).pack(side="right")
+        self.lbl_alerta_xml = tk.Label(
+            self.alerta_xml_frame,
+            text="",
+            font=("Segoe UI", 9, "bold"),
+            bg=COLORS["surface"],
+            fg="#FF0000",
+        )
+        self.lbl_alerta_xml.pack(side="right", padx=(0, 6))
+        self._xml_pendiente = None
+        self._blink_alerta_xml(0)
+
         self.panel_actual = "hoy"
 
         self.panel_hoy_frame = tk.Frame(
@@ -886,6 +966,7 @@ class ChecklistApp:
                 command=lambda: self.set_mode_panel("hoy", "dia2")
             )
             self.btn_modo_d2_hoy.pack(side="left")
+            self.btn_modo_d2_hoy.bind("<Button-1>", lambda _e: self._aviso_d2_bloqueado(self.btn_modo_d2_hoy), add="+")
 
             self.btn_guardar_hoy = StyledButton(
                 header,
@@ -934,6 +1015,7 @@ class ChecklistApp:
             )
             self.btn_modo_d2_manana.pack(side="left")
             self.btn_modo_d2_manana.set_enabled(False)
+            self.btn_modo_d2_manana.bind("<Button-1>", lambda _e: self._aviso_d2_bloqueado(self.btn_modo_d2_manana), add="+")
 
             self.btn_guardar_manana = StyledButton(
                 header,
@@ -964,6 +1046,7 @@ class ChecklistApp:
         self.panel_hoy_frame.pack(fill="both", expand=True)
         if not self.checklist_frame_hoy.winfo_children():
             self.render_checklist_panel("hoy")
+        self.actualizar_alerta_xml()
 
     def _on_btn_manana_click(self):
         self.mostrar_panel_manana()
@@ -976,6 +1059,7 @@ class ChecklistApp:
         self.panel_manana_frame.pack(fill="both", expand=True)
         if not self.checklist_frame_manana.winfo_children():
             self.render_checklist_panel("manana")
+        self.actualizar_alerta_xml()
 
     def actualizar_info_paneles(self):
         from datetime import timedelta
@@ -1030,6 +1114,7 @@ class ChecklistApp:
 
         estado_hoy = self.data.get("estado", {}).get(fecha_hoy, "")
         estado_manana = self.data.get("estado", {}).get(manana, "")
+        modo_previo = {"hoy": self.modo_hoy_var.get(), "manana": self.modo_manana_var.get()}
 
         self.set_mode_d2_enabled("hoy", estado_hoy in ("dia1_completado", "completo"))
         self.set_mode_d2_enabled("manana", estado_manana in ("dia1_completado", "completo"))
@@ -1043,6 +1128,12 @@ class ChecklistApp:
         self.btn_manana.set_active(self.panel_actual == "manana")
         self.update_mode_toggle("hoy")
         self.update_mode_toggle("manana")
+        self.actualizar_alerta_xml()
+
+        if self.modo_hoy_var.get() != modo_previo["hoy"] and self.checklist_frame_hoy.winfo_children():
+            self.render_checklist_panel("hoy")
+        if self.modo_manana_var.get() != modo_previo["manana"] and self.checklist_frame_manana.winfo_children():
+            self.render_checklist_panel("manana")
 
     def set_mode_panel(self, panel, modo):
         """
@@ -1078,6 +1169,15 @@ class ChecklistApp:
         else:
             self.btn_modo_d1_manana.set_active(self.modo_manana_var.get() == "dia1")
             self.btn_modo_d2_manana.set_active(self.modo_manana_var.get() == "dia2")
+
+    def _items_checklist(self, fecha_key, modo):
+        if modo == "dia1":
+            return CHECKLIST_DIA1
+        hipo = self.data.get("calendario", {}).get(fecha_key, "")
+        items = CHECKLIST_DIA2_POR_HIPODROMO.get(hipo, [])
+        if hipo not in ("Sin hipodromo",) and not items:
+            items = CHECKLIST_DIA2_SAN_ISIDRO
+        return items
 
     def _crear_fila_check(self, parent, item, check_vars, hipo, accent, mark_fg, is_setear, wrap_len, fecha_key):
         guardado = bool(self.data.get("checklist", {}).get(fecha_key, {}).get(item, False))
@@ -1255,13 +1355,7 @@ class ChecklistApp:
             ).pack(pady=(4, 10))
             return
         
-        if modo == "dia1":
-            items = CHECKLIST_DIA1
-        else:
-            hipo = self.data.get("calendario", {}).get(fecha_key, "")
-            items = CHECKLIST_DIA2_POR_HIPODROMO.get(hipo, [])
-            if hipo not in ("Sin hipodromo",) and not items:
-                items = CHECKLIST_DIA2_SAN_ISIDRO
+        items = self._items_checklist(fecha_key, modo)
         
         hipo = self.data.get("calendario", {}).get(fecha_key, "")
         accent = hipo_color(hipo, COLORS["accent"])
@@ -1340,11 +1434,17 @@ class ChecklistApp:
         if fecha_key not in self.data["checklist"]:
             self.data["checklist"][fecha_key] = {}
 
-        items_guardados = 0
-        total_items = len(check_vars)
+        items = self._items_checklist(fecha_key, modo)
+        if set(check_vars) != set(items):
+            self.render_checklist_panel(target_panel)
+            messagebox.showwarning("Revisá el checklist", "La lista en pantalla no correspondía al día seleccionado. Se actualizó: revisala y volvé a guardar.")
+            return
 
-        for item, var in check_vars.items():
-            estado_check = var.get()
+        items_guardados = 0
+        total_items = len(items)
+
+        for item in items:
+            estado_check = check_vars[item].get()
             self.data["checklist"][fecha_key][item] = estado_check
             if estado_check:
                 items_guardados += 1
@@ -1401,6 +1501,12 @@ class ChecklistApp:
             fechas_a_borrar = [f for f in self.data["estado"].keys() if f < fecha_limite]
             for f in fechas_a_borrar:
                 del self.data["estado"][f]
+                hubo_borrados = True
+
+        if "xml_si" in self.data:
+            fechas_a_borrar = [f for f in self.data["xml_si"].keys() if f < fecha_limite]
+            for f in fechas_a_borrar:
+                del self.data["xml_si"][f]
                 hubo_borrados = True
         
         if hubo_borrados:
