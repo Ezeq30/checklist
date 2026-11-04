@@ -58,6 +58,8 @@ def hipo_checked(hipo):
         return HIPODROMOS[hipo].get("checked", COLORS["success"])
     return COLORS["success"]
 
+XML_HIPODROMOS = {"San isidro": "SI", "La plata": "LP"}
+
 CHECKLIST_DIA1 = [
     "FECHA Y ESTADO", "MEET Y PERFORMANCE", "CALC PRICES",
     "REGLA DE CALCULO POR CARRERA", "CABALLOS Y APUESTAS POR CARRERA",
@@ -395,7 +397,10 @@ class ChecklistApp:
     def cargar_datos(self):
         if os.path.exists(DATA_FILE):
             with open(DATA_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
+            if "xml_si" in data:
+                data.setdefault("xml_subido", {}).update(data.pop("xml_si"))
+            return data
         return {"calendario": {}, "checklist": {}}
 
     def guardar_datos(self):
@@ -410,12 +415,12 @@ class ChecklistApp:
         self.data["checklist"][fecha_key][item] = valor
         self.guardar_datos()
 
-    def _xml_si_pendiente(self):
+    def _buscar_xml_pendiente(self):
         from datetime import timedelta
         hoy = date.today()
-        subidos = self.data.get("xml_si", {})
+        subidos = self.data.get("xml_subido", {})
         for fecha_key in sorted(self.data.get("calendario", {})):
-            if self.data["calendario"][fecha_key] != "San isidro" or subidos.get(fecha_key):
+            if self.data["calendario"][fecha_key] not in XML_HIPODROMOS or subidos.get(fecha_key):
                 continue
             try:
                 fecha = date.fromisoformat(fecha_key)
@@ -426,12 +431,15 @@ class ChecklistApp:
         return None
 
     def actualizar_alerta_xml(self):
-        self._xml_pendiente = self._xml_si_pendiente()
+        self._xml_pendiente = self._buscar_xml_pendiente()
         if self._xml_pendiente and self.panel_actual == "hoy":
+            hipo = self.data["calendario"][self._xml_pendiente]
+            self._xml_hipo = hipo
             dia_mes = f"{self._xml_pendiente[8:10]}/{self._xml_pendiente[5:7]}"
-            self.lbl_alerta_xml.config(text=f"SUBIR EL XML DE SI ({dia_mes})")
+            self.lbl_alerta_xml.config(text=f"SUBIR EL XML DE {XML_HIPODROMOS[hipo]} ({dia_mes})")
+            self.btn_listo_xml.set_bg("white", fg=HIPODROMOS[hipo]["color"])
             if not self.alerta_xml_frame.winfo_manager():
-                self.alerta_xml_frame.pack(side="right", padx=6, pady=4)
+                self.alerta_xml_frame.pack(side="right", padx=6, pady=3)
         else:
             self.alerta_xml_frame.pack_forget()
 
@@ -439,17 +447,22 @@ class ChecklistApp:
         fecha_key = self._xml_pendiente
         if not fecha_key:
             return
+        hipo = self.data["calendario"].get(fecha_key, "")
+        sigla = XML_HIPODROMOS.get(hipo, "")
         dia_mes = f"{fecha_key[8:10]}/{fecha_key[5:7]}"
-        if not messagebox.askyesno("XML San Isidro", f"¿Confirmás que subiste el XML de SI del {dia_mes}?"):
+        if not messagebox.askyesno(f"XML {HIPODROMOS[hipo]['nombre'].title()}", f"¿Confirmás que subiste el XML de {sigla} del {dia_mes}?"):
             return
-        self.data.setdefault("xml_si", {})[fecha_key] = True
+        self.data.setdefault("xml_subido", {})[fecha_key] = True
         self.guardar_datos()
         self.actualizar_alerta_xml()
 
     def _blink_alerta_xml(self, idx):
         if not self.lbl_alerta_xml.winfo_exists():
             return
-        self.lbl_alerta_xml.config(fg=["#FF0000", "#FFFFFF"][idx % 2])
+        datos = HIPODROMOS[self._xml_hipo]
+        bg = [datos["color"], datos["checked"]][idx % 2]
+        self.alerta_xml_frame.config(bg=bg)
+        self.lbl_alerta_xml.config(bg=bg)
         self.root.after(600, lambda: self._blink_alerta_xml((idx + 1) % 2))
 
     def _aviso_d2_bloqueado(self, boton):
@@ -880,22 +893,26 @@ class ChecklistApp:
         self.btn_manana.config(state="normal")
         self.btn_manana.pack(side="left")
 
-        self.alerta_xml_frame = tk.Frame(self.header_frame, bg=COLORS["surface"])
-        StyledButton(
+        self._xml_hipo = "San isidro"
+        xml_color = HIPODROMOS[self._xml_hipo]["color"]
+        self.alerta_xml_frame = tk.Frame(self.header_frame, bg=xml_color)
+        self.btn_listo_xml = StyledButton(
             self.alerta_xml_frame,
             text="LISTO",
-            bg=COLORS["danger"],
-            hover_bg="#DC2626",
+            bg="white",
+            fg=xml_color,
+            hover_bg="#F1F5F9",
             command=self.marcar_xml_subido,
-        ).pack(side="right")
+        )
+        self.btn_listo_xml.pack(side="right", padx=(0, 4), pady=3)
         self.lbl_alerta_xml = tk.Label(
             self.alerta_xml_frame,
             text="",
             font=("Segoe UI", 9, "bold"),
-            bg=COLORS["surface"],
-            fg="#FF0000",
+            bg=xml_color,
+            fg="white",
         )
-        self.lbl_alerta_xml.pack(side="right", padx=(0, 6))
+        self.lbl_alerta_xml.pack(side="right", padx=(8, 6))
         self._xml_pendiente = None
         self._blink_alerta_xml(0)
 
@@ -1503,10 +1520,10 @@ class ChecklistApp:
                 del self.data["estado"][f]
                 hubo_borrados = True
 
-        if "xml_si" in self.data:
-            fechas_a_borrar = [f for f in self.data["xml_si"].keys() if f < fecha_limite]
+        if "xml_subido" in self.data:
+            fechas_a_borrar = [f for f in self.data["xml_subido"].keys() if f < fecha_limite]
             for f in fechas_a_borrar:
-                del self.data["xml_si"][f]
+                del self.data["xml_subido"][f]
                 hubo_borrados = True
         
         if hubo_borrados:
