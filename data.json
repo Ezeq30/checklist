@@ -337,6 +337,22 @@
       "VER SI HAY BORRADOS AGREGADOS": true,
       "GENERAR DETALLE": true,
       "CARGAR EL VIDEO EN LA APP MOBILE": true
+    },
+    "2026-11-06": {
+      "TABLA DE COMISIONES POR CARRERA": true,
+      "CABALLOS Y APUESTAS POR CARRERA": true,
+      "REGLA DE CALCULO POR CARRERA": true,
+      "CALC PRICES": true,
+      "MEET Y PERFORMANCE": false,
+      "FECHA Y ESTADO": false,
+      "MONTOS MINIMOS POR APUESTA Y CARRERA": true,
+      "STATE BETTING CONTROL": true,
+      "PRINTERS": true,
+      "SALES TAX ASSOCIATION": true,
+      "LOCAL ASSOC BETTING CONTROL": true,
+      "IMPORT BETTING CONTROL": true,
+      "TIM BETTING CONTROL POR ASOCIACION": true,
+      "DEFAULT MINIMOS ARG USD PER": false
     }
   },
   "estado": {

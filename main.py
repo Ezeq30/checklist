@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
+from tkinter import font as tkfont
 from datetime import datetime, date
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
@@ -51,6 +52,12 @@ def hipo_color(hipo, fallback=None):
     if hipo and hipo in HIPODROMOS:
         return HIPODROMOS[hipo]["color"]
     return COLORS["card"] if fallback is None else fallback
+
+
+def mezclar(color, fondo, t):
+    c = [int(color[i:i + 2], 16) for i in (1, 3, 5)]
+    f = [int(fondo[i:i + 2], 16) for i in (1, 3, 5)]
+    return "#" + "".join(f"{round(a * t + b * (1 - t)):02X}" for a, b in zip(c, f))
 
 
 def hipo_checked(hipo):
@@ -120,33 +127,52 @@ else:
 
 DATA_FILE = os.path.join(exec_dir, "data.json")
 
-class StyledButton(tk.Button):
+class RoundedButton(tk.Canvas):
+    RADIUS = 7
+
     def __init__(self, master, **kwargs):
-        bg = kwargs.pop("bg", COLORS["accent"])
-        fg = kwargs.pop("fg", COLORS["fg"])
-        hover_bg = kwargs.pop("hover_bg", COLORS["hover_soft"])
-        padx = kwargs.pop("padx", 8)
-        pady = kwargs.pop("pady", 3)
-        font = kwargs.pop("font", ("Segoe UI", 8, "bold"))
-        super().__init__(
-            master,
-            bg=bg,
-            fg=fg,
-            activebackground=bg,
-            activeforeground=fg,
-            relief="flat",
-            bd=0,
-            padx=padx,
-            pady=pady,
-            font=font,
-            cursor="hand2",
-            **kwargs
-        )
-        self._base_bg = bg
-        self._hover_bg = hover_bg
-        self._fg = fg
+        self._base_bg = kwargs.pop("bg", COLORS["accent"])
+        self._fg = kwargs.pop("fg", COLORS["fg"])
+        self._hover_bg = kwargs.pop("hover_bg", COLORS["hover_soft"])
+        self._padx = kwargs.pop("padx", 10) + 2
+        self._pady = kwargs.pop("pady", 3) + 2
+        self._font = tkfont.Font(font=kwargs.pop("font", ("Segoe UI Semibold", 9)))
+        self._text = kwargs.pop("text", "")
+        self._command = kwargs.pop("command", None)
+        self._hover = False
+        try:
+            surface = master.cget("bg")
+        except tk.TclError:
+            surface = COLORS["surface"]
+        super().__init__(master, highlightthickness=0, bd=0, bg=surface, cursor="hand2", **kwargs)
+        self._ajustar_tamano()
+        self.bind("<Configure>", lambda _e: self._redraw())
         self.bind("<Enter>", self._on_enter)
         self.bind("<Leave>", self._on_leave)
+        self.bind("<ButtonRelease-1>", self._on_click)
+
+    def _ajustar_tamano(self):
+        w = self._font.measure(self._text) + 2 * self._padx
+        h = self._font.metrics("linespace") + 2 * self._pady
+        super().configure(width=w, height=h)
+        self._redraw()
+
+    def _redraw(self):
+        self.delete("all")
+        w = self.winfo_width() if self.winfo_width() > 1 else int(self.cget("width"))
+        h = self.winfo_height() if self.winfo_height() > 1 else int(self.cget("height"))
+        fill = self._hover_bg if self._hover else self._base_bg
+        _round_poly(self, 0, 0, w - 1, h - 1, self.RADIUS, fill=fill, outline=fill)
+        self.create_text(w / 2, h / 2, text=self._text, fill=self._fg, font=self._font)
+
+    def configure(self, cnf=None, **kwargs):
+        if "text" in kwargs:
+            self._text = kwargs.pop("text")
+            self._ajustar_tamano()
+        if cnf or kwargs:
+            return super().configure(cnf, **kwargs)
+
+    config = configure
 
     def set_bg(self, bg, hover_bg=None, fg=None):
         self._base_bg = bg
@@ -154,23 +180,36 @@ class StyledButton(tk.Button):
             self._hover_bg = hover_bg
         if fg is not None:
             self._fg = fg
-            self.config(fg=fg, activeforeground=fg)
-        self.config(bg=bg, activebackground=bg)
+        self._redraw()
+
+    def set_surface(self, bg):
+        super().configure(bg=bg)
 
     def _on_enter(self, _event):
-        self.config(cursor="hand2", bg=self._hover_bg, activebackground=self._hover_bg)
+        self._hover = True
+        self._redraw()
 
     def _on_leave(self, _event):
-        self.config(bg=self._base_bg, activebackground=self._base_bg)
+        self._hover = False
+        self._redraw()
+
+    def _on_click(self, event):
+        if 0 <= event.x < self.winfo_width() and 0 <= event.y < self.winfo_height() and self._command:
+            self._command()
+
+
+StyledButton = RoundedButton
 
 
 class SegmentedGroup(tk.Frame):
     def __init__(self, master, **kwargs):
         super().__init__(
             master,
-            bg=COLORS["card"],
+            bg=COLORS["bg"],
             highlightthickness=1,
             highlightbackground=COLORS["border"],
+            padx=2,
+            pady=2,
             **kwargs
         )
 
@@ -184,7 +223,7 @@ class SegmentedButton(tk.Button):
             bd=0,
             padx=10,
             pady=3,
-            font=("Segoe UI", 8, "bold"),
+            font=("Segoe UI Semibold", 9),
             activeforeground=COLORS["fg"],
             **kwargs
         )
@@ -206,15 +245,15 @@ class SegmentedButton(tk.Button):
     def set_active(self, active):
         self._active = active
         if not self._enabled:
-            self._base_bg = COLORS["card"]
-            self.config(bg=COLORS["card"], fg=COLORS["muted"], activebackground=COLORS["card"], state="disabled")
+            self._base_bg = COLORS["bg"]
+            self.config(bg=COLORS["bg"], fg=COLORS["muted"], activebackground=COLORS["bg"], state="disabled")
             return
         if active:
             self._base_bg = self._accent
             self.config(bg=self._accent, fg=self._accent_fg, activebackground=self._accent, state="normal")
         else:
-            self._base_bg = COLORS["card"]
-            self.config(bg=COLORS["card"], fg=COLORS["muted"], activebackground=COLORS["card"], state="normal")
+            self._base_bg = COLORS["bg"]
+            self.config(bg=COLORS["bg"], fg=COLORS["muted"], activebackground=COLORS["bg"], state="normal")
 
     def set_enabled(self, enabled):
         self._enabled = enabled
@@ -223,8 +262,8 @@ class SegmentedButton(tk.Button):
         self.config(state=state, fg=fg)
         if not enabled:
             self._active = False
-            self._base_bg = COLORS["card"]
-            self.config(bg=COLORS["card"], activebackground=COLORS["card"])
+            self._base_bg = COLORS["bg"]
+            self.config(bg=COLORS["bg"], activebackground=COLORS["bg"])
 
     def _on_enter(self, _event):
         if not self._enabled:
@@ -354,7 +393,7 @@ class DayCell(tk.Canvas):
         fill = self._fill
         if self._hover and fill in (COLORS["card"], COLORS["surface"]):
             fill = COLORS["hover_soft"]
-        radius = 7
+        radius = 9
         _round_poly(self, pad, pad, w - pad - 1, h - pad - 1, radius, fill=fill, outline=fill)
         if self._today:
             _round_poly(
@@ -368,7 +407,7 @@ class DayCell(tk.Canvas):
                 outline=COLORS["today_ring"],
                 width=2,
             )
-        self.create_text(w / 2, h / 2, text=self.text, fill=self._fg, font=("Segoe UI", 8, "bold"))
+        self.create_text(w / 2, h / 2, text=self.text, fill=self._fg, font=("Segoe UI Semibold", 10))
 
 class ChecklistApp:
     def __init__(self, root):
@@ -439,7 +478,7 @@ class ChecklistApp:
             self.lbl_alerta_xml.config(text=f"SUBIR EL XML DE {XML_HIPODROMOS[hipo]} ({dia_mes})")
             self.btn_listo_xml.set_bg("white", fg=HIPODROMOS[hipo]["color"])
             if not self.alerta_xml_frame.winfo_manager():
-                self.alerta_xml_frame.pack(side="right", padx=6, pady=3)
+                self.alerta_xml_frame.pack(side="right", padx=6, pady=1)
         else:
             self.alerta_xml_frame.pack_forget()
 
@@ -461,8 +500,10 @@ class ChecklistApp:
             return
         datos = HIPODROMOS[self._xml_hipo]
         bg = [datos["color"], datos["checked"]][idx % 2]
-        self.alerta_xml_frame.config(bg=bg)
+        borde = ["#FF0000", COLORS["surface"]][idx % 2]
+        self.alerta_xml_frame.config(bg=bg, highlightbackground=borde, highlightcolor=borde)
         self.lbl_alerta_xml.config(bg=bg)
+        self.btn_listo_xml.set_surface(bg)
         self.root.after(600, lambda: self._blink_alerta_xml((idx + 1) % 2))
 
     def _aviso_d2_bloqueado(self, boton):
@@ -516,10 +557,10 @@ class ChecklistApp:
         self.lbl_mes = tk.Label(
             header,
             text="",
-            font=("Segoe UI", 11, "bold"),
+            font=("Segoe UI Semibold", 12),
             bg=COLORS["surface"],
             fg=COLORS["fg"],
-            width=18,
+            width=15,
             anchor="center",
         )
         self.lbl_mes.pack(side="left", padx=8, expand=True)
@@ -545,7 +586,7 @@ class ChecklistApp:
             tk.Label(
                 cal_container,
                 text=d,
-                font=("Segoe UI", 8, "bold"),
+                font=("Segoe UI", 9),
                 bg=COLORS["surface"],
                 fg=COLORS["muted"],
                 anchor="center",
@@ -635,7 +676,7 @@ class ChecklistApp:
         tk.Label(
             card,
             text=f"{dia}/{self.current_month}/{self.current_year}",
-            font=("Segoe UI", 12, "bold"),
+            font=("Segoe UI Semibold", 13),
             bg=COLORS["surface"],
             fg=COLORS["fg"],
         ).pack(pady=(8, 4))
@@ -715,7 +756,7 @@ class ChecklistApp:
         body = tk.Frame(chip, bg=COLORS["card"])
         body.pack(fill="both", expand=True)
         tk.Label(body, text=etiqueta, font=("Segoe UI", 8), bg=COLORS["card"], fg=COLORS["muted"], pady=2).pack(fill="x", padx=10)
-        tk.Label(body, text=nombre, font=("Segoe UI", 12, "bold"), bg=COLORS["card"], fg=name_fg, pady=6).pack(fill="x", padx=10)
+        tk.Label(body, text=nombre, font=("Segoe UI Semibold", 13), bg=COLORS["card"], fg=name_fg, pady=6).pack(fill="x", padx=10)
 
     def actualizar_info_box(self):
         from datetime import timedelta
@@ -774,12 +815,12 @@ class ChecklistApp:
         tk.Label(
             card,
             text="LOGIN ADMIN",
-            font=("Segoe UI", 11, "bold"),
+            font=("Segoe UI Semibold", 12),
             bg=COLORS["surface"],
             fg=COLORS["fg"],
         ).pack(pady=(8, 10))
 
-        tk.Label(card, text="USUARIO", font=("Segoe UI", 8, "bold"), bg=COLORS["surface"], fg=COLORS["muted"]).pack(anchor="w", padx=14)
+        tk.Label(card, text="USUARIO", font=("Segoe UI", 8), bg=COLORS["surface"], fg=COLORS["muted"]).pack(anchor="w", padx=14)
         user_wrap = tk.Frame(card, bg=COLORS["card"], highlightthickness=1, highlightbackground=COLORS["input_border"])
         user_wrap.pack(fill="x", padx=14, pady=(3, 10))
         entry_user = tk.Entry(
@@ -793,7 +834,7 @@ class ChecklistApp:
         )
         entry_user.pack(fill="x", ipady=5, padx=6)
 
-        tk.Label(card, text="CLAVE", font=("Segoe UI", 8, "bold"), bg=COLORS["surface"], fg=COLORS["muted"]).pack(anchor="w", padx=14)
+        tk.Label(card, text="CLAVE", font=("Segoe UI", 8), bg=COLORS["surface"], fg=COLORS["muted"]).pack(anchor="w", padx=14)
         pass_wrap = tk.Frame(card, bg=COLORS["card"], highlightthickness=1, highlightbackground=COLORS["input_border"])
         pass_wrap.pack(fill="x", padx=14, pady=(3, 14))
         entry_pass = tk.Entry(
@@ -895,7 +936,13 @@ class ChecklistApp:
 
         self._xml_hipo = "San isidro"
         xml_color = HIPODROMOS[self._xml_hipo]["color"]
-        self.alerta_xml_frame = tk.Frame(self.header_frame, bg=xml_color)
+        self.alerta_xml_frame = tk.Frame(
+            self.header_frame,
+            bg=xml_color,
+            highlightthickness=3,
+            highlightbackground="#FF0000",
+            highlightcolor="#FF0000",
+        )
         self.btn_listo_xml = StyledButton(
             self.alerta_xml_frame,
             text="LISTO",
@@ -904,11 +951,11 @@ class ChecklistApp:
             hover_bg="#F1F5F9",
             command=self.marcar_xml_subido,
         )
-        self.btn_listo_xml.pack(side="right", padx=(0, 4), pady=3)
+        self.btn_listo_xml.pack(side="right", padx=(0, 3), pady=2)
         self.lbl_alerta_xml = tk.Label(
             self.alerta_xml_frame,
             text="",
-            font=("Segoe UI", 9, "bold"),
+            font=("Segoe UI", 10, "bold"),
             bg=xml_color,
             fg="white",
         )
@@ -946,14 +993,14 @@ class ChecklistApp:
         accent_bar = tk.Frame(frame, bg=COLORS["border"], height=3)
         accent_bar.pack(fill="x")
         header = tk.Frame(frame, bg=COLORS["surface"])
-        header.pack(fill="x", pady=4, padx=6)
+        header.pack(fill="x", pady=(4, 3), padx=8)
 
         if tipo == "hoy":
             self.bar_hoy = accent_bar
             self.lbl_titulo_hoy = tk.Label(
                 header,
                 text="",
-                font=("Segoe UI", 11, "bold"),
+                font=("Segoe UI Semibold", 12),
                 bg=COLORS["surface"],
                 fg=COLORS["muted"],
             )
@@ -1001,7 +1048,7 @@ class ChecklistApp:
             self.lbl_titulo_manana = tk.Label(
                 header,
                 text="",
-                font=("Segoe UI", 11, "bold"),
+                font=("Segoe UI Semibold", 12),
                 bg=COLORS["surface"],
                 fg=COLORS["muted"],
             )
@@ -1050,7 +1097,7 @@ class ChecklistApp:
 
     def crear_checklist_frame(self, parent):
         container = tk.Frame(parent, bg=COLORS["surface"])
-        container.pack(fill="both", expand=True, padx=4, pady=(0, 4))
+        container.pack(fill="both", expand=True, padx=6, pady=(0, 4))
         frame = tk.Frame(container, bg=COLORS["surface"])
         frame.pack(fill="both", expand=True)
         return frame
@@ -1200,43 +1247,62 @@ class ChecklistApp:
         guardado = bool(self.data.get("checklist", {}).get(fecha_key, {}).get(item, False))
         var = tk.BooleanVar(value=guardado)
         check_vars[item] = var
-        row_bg = hipo_checked(hipo) if hipo in HIPODROMOS else COLORS["row"]
-        text_fg = hipo_fg(hipo) if hipo in HIPODROMOS else COLORS["fg"]
-        checked_bg = hipo_color(hipo) if hipo in HIPODROMOS else COLORS["row_hover"]
+        row_bg = COLORS["row"]
+        text_fg = COLORS["fg"]
+        checked_bg = mezclar(accent, COLORS["row"], 0.30)
+        estilos = {
+            (False, False): row_bg,
+            (False, True): COLORS["row_hover"],
+            (True, False): checked_bg,
+            (True, True): mezclar(accent, COLORS["row"], 0.40),
+        }
+        hover = [False]
 
-        frame_item = tk.Frame(parent, bg=row_bg, cursor="hand2")
-        bar = tk.Frame(frame_item, bg=accent, width=4, cursor="hand2")
+        frame_item = tk.Frame(
+            parent,
+            bg=row_bg,
+            cursor="hand2",
+            highlightthickness=1,
+            highlightbackground=mezclar(accent, COLORS["row"], 0.25),
+        )
+        bar = tk.Frame(frame_item, bg=accent, width=3, cursor="hand2")
         bar.pack(side="left", fill="y")
         bar.pack_propagate(False)
 
         inner = tk.Frame(frame_item, bg=row_bg, cursor="hand2")
-        inner.pack(side="left", fill="both", expand=True, padx=5, pady=2)
+        inner.pack(side="left", fill="both", expand=True, padx=6)
 
         mark = CheckMark(inner, var, accent, mark_fg=mark_fg, bg=row_bg)
-        mark.pack(side="left", padx=(0, 6))
+        mark.pack(side="left", padx=(0, 7))
 
         labels = []
         if is_setear:
             hipo_nombre = HIPODROMOS.get(hipo, {}).get("nombre", "SIN ASIGNAR")
+            text_box = tk.Frame(inner, bg=row_bg, cursor="hand2")
+            text_box.pack(side="left", fill="x", expand=True)
             label_setear = tk.Label(
-                inner,
-                text="SETEAR CATEGORIA  ·",
-                font=("Segoe UI", 8, "bold"),
+                text_box,
+                text="SETEAR CATEGORIA",
+                font=("Segoe UI Semibold", 9),
                 bg=row_bg,
                 fg=text_fg,
+                anchor="w",
+                pady=0,
                 cursor="hand2",
             )
-            label_setear.pack(side="left", padx=(0, 4))
+            label_setear.pack(fill="x")
             label_alerta = tk.Label(
-                inner,
+                text_box,
                 text=hipo_nombre,
-                font=("Segoe UI", 11, "bold"),
+                font=("Segoe UI", 10, "bold"),
                 bg=row_bg,
                 fg="#FF0000",
+                anchor="w",
+                pady=0,
                 cursor="hand2",
             )
-            label_alerta.pack(side="left")
-            labels.extend([label_setear, label_alerta])
+            label_alerta.pack(fill="x")
+            labels.extend([text_box, label_setear, label_alerta])
 
             blink_idx = [0]
 
@@ -1252,18 +1318,20 @@ class ChecklistApp:
             lbl = tk.Label(
                 inner,
                 text=item,
-                font=("Segoe UI", 8, "bold"),
+                font=("Segoe UI Semibold", 9),
                 bg=row_bg,
                 fg=text_fg,
                 anchor="w",
                 justify="left",
                 wraplength=wrap_len,
+                pady=0,
                 cursor="hand2",
             )
             lbl.pack(side="left", fill="x", expand=True)
             labels.append(lbl)
 
-        def paint(bg):
+        def paint():
+            bg = estilos[(var.get(), hover[0])]
             frame_item.configure(bg=bg)
             inner.configure(bg=bg)
             mark.set_bg(bg)
@@ -1271,19 +1339,33 @@ class ChecklistApp:
                 lab.configure(bg=bg)
 
         def on_toggle(*_args):
-            paint(checked_bg if var.get() else row_bg)
+            paint()
             self._guardar_progreso_check(fecha_key, item, var.get())
 
         def toggle(_event=None):
             var.set(not var.get())
             return "break"
 
+        def on_enter(_event=None):
+            if not hover[0]:
+                hover[0] = True
+                paint()
+
+        def on_leave(event):
+            dentro = frame_item.winfo_containing(event.x_root, event.y_root)
+            if dentro is not None and str(dentro).startswith(str(frame_item)):
+                return
+            hover[0] = False
+            paint()
+
         var.trace_add("write", on_toggle)
         if var.get():
-            paint(checked_bg)
+            paint()
 
-        for widget in (frame_item, bar, inner, *labels):
+        for widget in (frame_item, bar, inner, mark, *labels):
             widget.bind("<Button-1>", toggle)
+            widget.bind("<Enter>", on_enter, add="+")
+            widget.bind("<Leave>", on_leave, add="+")
 
         return frame_item
 
@@ -1350,7 +1432,7 @@ class ChecklistApp:
             tk.Label(
                 box,
                 text="Día 1 completado",
-                font=("Segoe UI", 11, "bold"),
+                font=("Segoe UI Semibold", 12),
                 bg=COLORS["card"],
                 fg=COLORS["success"],
                 pady=6,
@@ -1395,13 +1477,14 @@ class ChecklistApp:
         container.update_idletasks()
         frame.update_idletasks()
         cols = 2
-        wrap_len = 180
+        col_w = frame.winfo_width() // cols
+        wrap_len = col_w - 48 if col_w > 200 else 205
         row_items = {}
         max_items = 14
         row_count = max(1, (max_items + cols - 1) // cols)
 
         for r in range(0, 20):
-            frame.rowconfigure(r, weight=0, minsize=0)
+            frame.rowconfigure(r, weight=0, minsize=0, uniform="")
 
         for idx, item in enumerate(items):
             row = idx % row_count
@@ -1414,13 +1497,13 @@ class ChecklistApp:
 
         for row, row_frames in row_items.items():
             target_height = 32
-            frame.rowconfigure(row, weight=1, minsize=target_height)
+            frame.rowconfigure(row, weight=1, minsize=target_height, uniform="check_rows")
             for item_frame in row_frames:
                 item_frame.grid_propagate(False)
                 item_frame.configure(height=target_height)
 
-        frame.columnconfigure(0, weight=1)
-        frame.columnconfigure(1, weight=1)
+        frame.columnconfigure(0, weight=1, uniform="check_cols")
+        frame.columnconfigure(1, weight=1, uniform="check_cols")
 
     def guardar_checklist_panel(self, panel):
         """
@@ -1545,7 +1628,7 @@ class ChecklistApp:
         tk.Label(
             container,
             text="Checklist completo",
-            font=("Segoe UI", 12, "bold"),
+            font=("Segoe UI Semibold", 13),
             bg=COLORS["card"],
             fg=COLORS["success"],
         ).pack(pady=(8, 2))
