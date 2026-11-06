@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Checklist Hipódromos</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="bg" aria-hidden="true">
+    <div class="bg-grid"></div>
+    <div class="orb orb-a"></div>
+    <div class="orb orb-b"></div>
+  </div>
+
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-logo" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 12.5l4.5 4.5L20 6.5" />
+      </svg>
+      <div class="brand-text">
+        <span class="brand-kicker">CHECKLIST</span>
+        <span class="brand-title">Hipódromos</span>
+      </div>
+    </div>
+
+    <nav class="tabs seg" id="tabs">
+      <span class="seg-slider"></span>
+      <button class="seg-btn tab" data-panel="hoy">
+        <span class="tab-label">HOY</span>
+        <span class="tab-hipo" id="tab-hipo-hoy"></span>
+      </button>
+      <button class="seg-btn tab" data-panel="manana">
+        <span class="tab-label">MAÑANA</span>
+        <span class="tab-hipo" id="tab-hipo-manana"></span>
+      </button>
+    </nav>
+
+    <div class="topbar-right">
+      <div class="xml-alert hidden" id="xml-alert">
+        <span class="xml-dot"></span>
+        <span class="xml-text" id="xml-text"></span>
+        <button class="xml-listo" id="xml-listo">LISTO</button>
+      </div>
+      <button class="ghost-btn" id="btn-calendario" title="Ver calendario de hipódromos">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="3.5" y="5" width="17" height="15" rx="3" />
+          <path d="M3.5 10h17M8 3v4M16 3v4" />
+        </svg>
+        <span>Calendario</span>
+      </button>
+      <button class="ghost-btn icon-only" id="btn-login" title="Iniciar sesión de administrador">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="5" y="10.5" width="14" height="9.5" rx="2.5" />
+          <path d="M8.5 10.5V8a3.5 3.5 0 017 0v2.5" />
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="panel glass" id="panel">
+    <div class="panel-head">
+      <div class="hipo-title">
+        <span class="hipo-dot"></span>
+        <div class="hipo-text">
+          <span class="hipo-name" id="hipo-name"></span>
+          <span class="hipo-date" id="hipo-date"></span>
+        </div>
+      </div>
+
+      <div class="seg mode-seg" id="mode-seg">
+        <span class="seg-slider"></span>
+        <button class="seg-btn" data-modo="dia1">D1</button>
+        <button class="seg-btn" data-modo="dia2">
+          <svg class="lock" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="5" y="10.5" width="14" height="9.5" rx="2.5" />
+            <path d="M8.5 10.5V8a3.5 3.5 0 017 0v2.5" />
+          </svg>
+          D2
+        </button>
+      </div>
+
+      <div class="progress" id="progress">
+        <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+        <span class="progress-text" id="progress-text"></span>
+      </div>
+
+      <button class="primary-btn" id="btn-guardar">
+        <span>GUARDAR</span>
+      </button>
+    </div>
+
+    <div class="panel-body" id="panel-body"></div>
+  </main>
+
+  <div class="backdrop" id="backdrop"></div>
+
+  <aside class="drawer glass" id="drawer" aria-hidden="true">
+    <div class="drawer-head">
+      <button class="round-btn" id="cal-prev" aria-label="Mes anterior">
+        <svg viewBox="0 0 24 24"><path d="M14.5 6l-6 6 6 6" /></svg>
+      </button>
+      <span class="cal-title" id="cal-title"></span>
+      <button class="round-btn" id="cal-next" aria-label="Mes siguiente">
+        <svg viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6" /></svg>
+      </button>
+      <button class="round-btn close" id="cal-close" aria-label="Cerrar">
+        <svg viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" /></svg>
+      </button>
+    </div>
+    <div class="cal-week">
+      <span>DOM</span><span>LUN</span><span>MAR</span><span>MIE</span><span>JUE</span><span>VIE</span><span>SAB</span>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <div class="cal-foot">
+      <div class="cal-legend" id="cal-legend"></div>
+      <span class="cal-hint" id="cal-hint"></span>
+    </div>
+    <div class="popover hidden" id="popover"></div>
+  </aside>
+
+  <div class="modal-layer hidden" id="modal-layer">
+    <div class="modal glass" id="modal"></div>
+  </div>
+
+  <div class="toasts" id="toasts"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
