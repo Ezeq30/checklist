@@ -283,9 +283,26 @@
       "SETEAR VIDEOS POR MEET": true,
       "RESETEAR TERMINALES": true,
       "PONER TERMINALES EN SERVICIO": true
+    },
+    "2026-11-07": {
+      "FECHA Y ESTADO": true,
+      "MEET Y PERFORMANCE": true,
+      "CALC PRICES": true,
+      "REGLA DE CALCULO POR CARRERA": true,
+      "CABALLOS Y APUESTAS POR CARRERA": true,
+      "TABLA DE COMISIONES POR CARRERA": true,
+      "MONTOS MINIMOS POR APUESTA Y CARRERA": true,
+      "STATE BETTING CONTROL": true,
+      "PRINTERS": true,
+      "SALES TAX ASSOCIATION": true,
+      "LOCAL ASSOC BETTING CONTROL": true,
+      "IMPORT BETTING CONTROL": true,
+      "TIM BETTING CONTROL POR ASOCIACION": true,
+      "DEFAULT MINIMOS ARG USD PER": true
     }
   },
   "estado": {
-    "2026-11-06": "completo"
+    "2026-11-06": "completo",
+    "2026-11-07": "dia1_completado"
   }
 }

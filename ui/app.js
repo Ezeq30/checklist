@@ -87,12 +87,16 @@ function aplicar(estado) {
   render();
 }
 
+const TEMAS = {
+  "San isidro": "san-isidro",
+  "La plata": "la-plata",
+  "Palermo": "palermo",
+  "Sin hipodromo": "sin-hipodromo",
+};
+
 function render() {
   const p = panelActual();
-  const raiz = document.documentElement.style;
-  raiz.setProperty("--hipo", p.color);
-  raiz.setProperty("--hipo-claro", p.claro);
-  raiz.setProperty("--hipo-fg", p.fg);
+  document.body.dataset.hipo = TEMAS[p.hipo] || "ninguno";
 
   renderTabs();
   renderHead(p);
@@ -110,7 +114,9 @@ function renderTabs() {
   for (const panel of ["hoy", "manana"]) {
     const datos = S.estado.paneles[panel];
     $(`#tab-hipo-${panel}`).textContent = datos.nombre;
-    tabs.querySelector(`[data-panel="${panel}"]`).classList.toggle("active", panel === S.panel);
+    const tab = tabs.querySelector(`[data-panel="${panel}"]`);
+    tab.classList.toggle("active", panel === S.panel);
+    tab.style.setProperty("--tab-c", datos.hipo ? datos.claro : "");
   }
 }
 
@@ -216,8 +222,9 @@ function crearCard(item, i, p) {
   const card = el("div", `card${item.checked ? " checked" : ""}`);
   card.dataset.i = i;
   card.style.setProperty("--i", i);
+  card.append(el("span", "sweep"));
   const tick = el("span", "tick");
-  tick.innerHTML = '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  tick.innerHTML = '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="burst"><i></i><i></i><i></i><i></i><i></i><i></i></span>';
   card.append(tick);
 
   if (item.setear) {
@@ -239,7 +246,14 @@ async function toggleCheck(i) {
   const item = p.items[i];
   item.checked = !item.checked;
   p.hechos += item.checked ? 1 : -1;
-  $(`.card[data-i="${i}"]`).classList.toggle("checked", item.checked);
+  const card = $(`.card[data-i="${i}"]`);
+  card.classList.toggle("checked", item.checked);
+  card.classList.remove("recien");
+  if (item.checked) {
+    void card.offsetWidth;
+    card.classList.add("recien");
+    setTimeout(() => card.classList.remove("recien"), 900);
+  }
   actualizarProgreso(p);
   const r = await api.toggle_check(S.panel, item.nombre, item.checked);
   aplicar(r.estado);
@@ -330,8 +344,12 @@ function abrirLogin() {
     };
     cancelar.onclick = cerrar;
     entrar.onclick = enviar;
-    usuario.onkeydown = (e) => e.key === "Enter" && clave.focus();
-    clave.onkeydown = (e) => e.key === "Enter" && enviar();
+    usuario.onkeydown = (e) => {
+      if (e.key === "Enter") clave.focus();
+    };
+    clave.onkeydown = (e) => {
+      if (e.key === "Enter") enviar();
+    };
     setTimeout(() => usuario.focus(), 50);
   });
 }
@@ -492,13 +510,18 @@ function conectarEventos() {
 
 // Conexión con Python o API simulada
 
+function apiPython() {
+  const api = window.pywebview && window.pywebview.api;
+  return api && typeof api.estado === "function" ? api : null;
+}
+
 function obtenerApi() {
-  if (window.pywebview && window.pywebview.api) return Promise.resolve(window.pywebview.api);
+  if (apiPython()) return Promise.resolve(apiPython());
   return new Promise((resolve) => {
     let listo = false;
     window.addEventListener("pywebviewready", () => {
       listo = true;
-      resolve(window.pywebview.api);
+      resolve(apiPython() || crearApiSimulada());
     });
     setTimeout(() => {
       if (!listo) resolve(crearApiSimulada());

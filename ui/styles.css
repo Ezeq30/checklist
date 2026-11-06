@@ -11,12 +11,92 @@
   --ok: #34d399;
   --warn: #fbbf24;
   --danger: #f43f5e;
-  --hipo: #38bdf8;
-  --hipo-claro: #7dd3fc;
-  --hipo-fg: #ffffff;
   --radius: 12px;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+}
+
+@property --hipo {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #0ea5e9;
+}
+
+@property --hipo-claro {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #38bdf8;
+}
+
+@property --hipo-neon {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #38bdf8;
+}
+
+@property --hipo-palido {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #bae6fd;
+}
+
+@property --hipo-fondo {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #0a1830;
+}
+
+@property --ang {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+body {
+  --hipo: #0ea5e9;
+  --hipo-claro: #38bdf8;
+  --hipo-neon: #38bdf8;
+  --hipo-palido: #bae6fd;
+  --hipo-fondo: #0a1830;
+  --hipo-fg: #ffffff;
+  transition: --hipo 0.8s var(--ease), --hipo-claro 0.8s var(--ease), --hipo-neon 0.8s var(--ease),
+    --hipo-palido 0.8s var(--ease), --hipo-fondo 0.8s var(--ease);
+}
+
+body[data-hipo="san-isidro"] {
+  --hipo: #2e7d32;
+  --hipo-claro: #4caf50;
+  --hipo-neon: #4ade80;
+  --hipo-palido: #a5d6a7;
+  --hipo-fondo: #06200f;
+  --hipo-fg: #ffffff;
+}
+
+body[data-hipo="la-plata"] {
+  --hipo: #1565c0;
+  --hipo-claro: #42a5f5;
+  --hipo-neon: #60a5fa;
+  --hipo-palido: #90caf9;
+  --hipo-fondo: #071a3a;
+  --hipo-fg: #ffffff;
+}
+
+body[data-hipo="palermo"] {
+  --hipo: #f9a825;
+  --hipo-claro: #fdd835;
+  --hipo-neon: #fcd34d;
+  --hipo-palido: #ffe082;
+  --hipo-fondo: #241a04;
+  --hipo-fg: #1a1200;
+}
+
+body[data-hipo="sin-hipodromo"] {
+  --hipo: #c62828;
+  --hipo-claro: #ef4444;
+  --hipo-neon: #f87171;
+  --hipo-palido: #fecaca;
+  --hipo-fondo: #260809;
+  --hipo-fg: #ffffff;
 }
 
 * {
@@ -70,8 +150,8 @@ svg {
   z-index: -1;
   overflow: hidden;
   background:
-    radial-gradient(120% 90% at 0% 0%, #111a3a 0%, transparent 55%),
-    radial-gradient(120% 90% at 100% 100%, #1d1036 0%, transparent 55%),
+    radial-gradient(120% 90% at 0% 0%, var(--hipo-fondo) 0%, transparent 60%),
+    radial-gradient(120% 90% at 100% 100%, color-mix(in srgb, var(--hipo-fondo) 60%, #1d1036) 0%, transparent 60%),
     var(--bg);
 }
 
@@ -79,8 +159,8 @@ svg {
   position: absolute;
   inset: -40px;
   background-image:
-    linear-gradient(rgba(120, 140, 255, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(120, 140, 255, 0.07) 1px, transparent 1px);
+    linear-gradient(color-mix(in srgb, var(--hipo-neon) 9%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--hipo-neon) 9%, transparent) 1px, transparent 1px);
   background-size: 40px 40px;
   mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
   animation: grid-move 18s linear infinite;
@@ -105,14 +185,13 @@ svg {
 .orb-a {
   top: -160px;
   left: 20%;
-  background: color-mix(in srgb, var(--hipo) 70%, #3b82f6);
-  transition: background 0.8s var(--ease);
+  background: var(--hipo-neon);
 }
 
 .orb-b {
   bottom: -200px;
   right: 5%;
-  background: #7c3aed;
+  background: color-mix(in srgb, var(--hipo) 55%, #7c3aed);
   animation-delay: -6s;
 }
 
@@ -124,7 +203,7 @@ svg {
 
 .glass {
   background: var(--glass);
-  border: 1px solid var(--line);
+  border: 1px solid color-mix(in srgb, var(--hipo-neon) 18%, var(--line));
   border-radius: var(--radius);
   backdrop-filter: blur(16px) saturate(140%);
   box-shadow: 0 10px 40px -20px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.05);
@@ -154,8 +233,9 @@ svg {
   border-radius: 9px;
   color: #fff;
   stroke-width: 2.6;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  box-shadow: 0 0 18px -2px rgba(56, 189, 248, 0.6);
+  color: var(--hipo-fg);
+  background: linear-gradient(135deg, var(--hipo), var(--hipo-neon));
+  box-shadow: 0 0 18px -2px var(--hipo-neon);
 }
 
 .brand-text {
@@ -243,8 +323,25 @@ svg {
 }
 
 .tab-hipo {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: 11.5px;
   letter-spacing: 0.04em;
+}
+
+.tab-hipo::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--tab-c, var(--muted));
+  box-shadow: 0 0 8px var(--tab-c, transparent);
+}
+
+.tab.active .tab-hipo::before {
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
 }
 
 .topbar-right {
@@ -275,9 +372,10 @@ svg {
 }
 
 .ghost-btn:hover {
-  background: rgba(148, 163, 255, 0.14);
-  border-color: var(--line-strong);
-  box-shadow: 0 0 18px -6px var(--accent);
+  background: color-mix(in srgb, var(--hipo-neon) 14%, transparent);
+  border-color: color-mix(in srgb, var(--hipo-neon) 60%, transparent);
+  box-shadow: 0 0 20px -6px var(--hipo-neon);
+  color: color-mix(in srgb, var(--hipo-palido) 60%, #fff);
 }
 
 .ghost-btn:active {
@@ -395,9 +493,20 @@ svg {
   position: absolute;
   inset: 0 0 auto 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent, var(--hipo), transparent);
-  box-shadow: 0 0 18px var(--hipo);
-  transition: background 0.6s;
+  background: linear-gradient(90deg, transparent, var(--hipo-neon), transparent);
+  box-shadow: 0 0 18px var(--hipo-neon);
+  animation: linea-luz 4s ease-in-out infinite;
+}
+
+@keyframes linea-luz {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.panel {
+  box-shadow: 0 10px 40px -20px rgba(0, 0, 0, 0.8), 0 0 40px -24px var(--hipo-neon),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .panel-head {
@@ -420,14 +529,14 @@ svg {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: var(--hipo);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--hipo) 25%, transparent), 0 0 14px var(--hipo);
+  background: var(--hipo-neon);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--hipo-neon) 25%, transparent), 0 0 14px var(--hipo-neon);
   animation: dot-breathe 2.6s ease-in-out infinite;
 }
 
 @keyframes dot-breathe {
   50% {
-    box-shadow: 0 0 0 6px color-mix(in srgb, var(--hipo) 8%, transparent), 0 0 22px var(--hipo);
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--hipo-neon) 8%, transparent), 0 0 22px var(--hipo-neon);
   }
 }
 
@@ -441,8 +550,19 @@ svg {
   font-size: 17px;
   font-weight: 700;
   letter-spacing: 0.05em;
-  color: color-mix(in srgb, var(--hipo-claro) 80%, #fff);
-  text-shadow: 0 0 16px color-mix(in srgb, var(--hipo) 70%, transparent);
+  background: linear-gradient(90deg, var(--hipo-palido), var(--hipo-neon), var(--hipo-palido));
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--hipo-neon) 55%, transparent));
+  animation: brillo-texto 5s linear infinite;
+}
+
+@keyframes brillo-texto {
+  to {
+    background-position: -200% 0;
+  }
 }
 
 .hipo-date {
@@ -493,9 +613,10 @@ svg {
 
 .progress-track {
   flex: 1;
-  height: 6px;
+  height: 7px;
   border-radius: 99px;
-  background: rgba(148, 163, 255, 0.1);
+  background: color-mix(in srgb, var(--hipo-neon) 10%, rgba(148, 163, 255, 0.06));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--hipo-neon) 14%, transparent);
   overflow: hidden;
 }
 
@@ -503,13 +624,16 @@ svg {
   height: 100%;
   width: 0;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--hipo), var(--hipo-claro));
-  box-shadow: 0 0 12px var(--hipo);
+  background: linear-gradient(90deg, var(--hipo), var(--hipo-neon), var(--hipo-palido), var(--hipo-neon), var(--hipo));
+  background-size: 200% 100%;
+  box-shadow: 0 0 12px var(--hipo-neon);
   transition: width 0.6s var(--ease);
+  animation: brillo-texto 2.5s linear infinite;
 }
 
 .progress.full .progress-fill {
-  background: linear-gradient(90deg, var(--ok), #6ee7b7);
+  background: linear-gradient(90deg, #10b981, #6ee7b7, #10b981);
+  background-size: 200% 100%;
   box-shadow: 0 0 14px var(--ok);
 }
 
@@ -530,9 +654,9 @@ svg {
   font-weight: 700;
   font-size: 11.5px;
   letter-spacing: 0.1em;
-  color: #04111f;
-  background: linear-gradient(135deg, #34d399, #22d3ee);
-  box-shadow: 0 6px 20px -8px rgba(52, 211, 153, 0.9);
+  color: var(--hipo-fg);
+  background: linear-gradient(135deg, var(--hipo), var(--hipo-claro) 55%, var(--hipo-neon));
+  box-shadow: 0 6px 20px -8px var(--hipo-neon), inset 0 1px 0 rgba(255, 255, 255, 0.25);
   transition: transform 0.2s, box-shadow 0.25s, filter 0.25s;
 }
 
@@ -547,7 +671,7 @@ svg {
 
 .primary-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 10px 26px -8px rgba(52, 211, 153, 1);
+  box-shadow: 0 10px 28px -6px var(--hipo-neon), inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 .primary-btn:hover::after {
@@ -594,14 +718,13 @@ svg {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
   padding: 0 10px 0 12px;
-  border-radius: 9px;
-  overflow: hidden;
+  border-radius: 10px;
   cursor: pointer;
-  background: rgba(148, 163, 255, 0.045);
-  border: 1px solid rgba(148, 163, 255, 0.09);
-  transition: transform 0.25s var(--ease), background 0.35s, border-color 0.35s, box-shadow 0.35s;
+  background: linear-gradient(95deg, color-mix(in srgb, var(--hipo-neon) 6%, rgba(148, 163, 255, 0.03)), rgba(148, 163, 255, 0.025));
+  border: 1px solid color-mix(in srgb, var(--hipo-neon) 22%, transparent);
+  transition: transform 0.3s var(--ease), background 0.4s, border-color 0.4s, box-shadow 0.4s;
   animation: entrar 0.45s var(--ease) both;
   animation-delay: calc(var(--i) * 22ms);
 }
@@ -609,27 +732,59 @@ svg {
 .card::before {
   content: "";
   position: absolute;
-  left: 0;
-  top: 6px;
-  bottom: 6px;
+  left: -1px;
+  top: 7px;
+  bottom: 7px;
   width: 3px;
   border-radius: 0 3px 3px 0;
-  background: var(--hipo);
-  box-shadow: 0 0 10px var(--hipo);
-  opacity: 0.75;
-  transition: opacity 0.3s, top 0.3s, bottom 0.3s;
+  background: var(--hipo-neon);
+  box-shadow: 0 0 10px var(--hipo-neon);
+  opacity: 0.7;
+  transition: opacity 0.3s, top 0.35s var(--ease), bottom 0.35s var(--ease);
+}
+
+.card::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  padding: 1.5px;
+  border-radius: 11px;
+  background: conic-gradient(from var(--ang), transparent 0deg, transparent 200deg, var(--hipo-neon) 290deg,
+      var(--hipo-palido) 320deg, transparent 360deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s var(--ease);
 }
 
 .card:hover {
-  transform: translateY(-1px);
-  background: rgba(148, 163, 255, 0.08);
-  border-color: color-mix(in srgb, var(--hipo) 45%, transparent);
-  box-shadow: 0 8px 22px -14px var(--hipo);
+  transform: translateY(-2px);
+  background: linear-gradient(95deg, color-mix(in srgb, var(--hipo-neon) 14%, transparent), color-mix(in srgb, var(--hipo-neon) 4%, transparent));
+  border-color: color-mix(in srgb, var(--hipo-neon) 45%, transparent);
+  box-shadow: 0 10px 24px -14px var(--hipo-neon), 0 0 0 1px color-mix(in srgb, var(--hipo-neon) 12%, transparent);
+}
+
+.card:hover::after {
+  opacity: 1;
+  animation: girar 2.2s linear infinite;
+}
+
+.card:hover::before {
+  opacity: 1;
+}
+
+@keyframes girar {
+  to {
+    --ang: 360deg;
+  }
 }
 
 .card.checked {
-  background: linear-gradient(95deg, color-mix(in srgb, var(--hipo) 34%, transparent), color-mix(in srgb, var(--hipo) 10%, transparent));
-  border-color: color-mix(in srgb, var(--hipo) 50%, transparent);
+  background: linear-gradient(95deg, color-mix(in srgb, var(--hipo) 42%, transparent), color-mix(in srgb, var(--hipo) 12%, transparent));
+  border-color: color-mix(in srgb, var(--hipo-neon) 55%, transparent);
+  box-shadow: inset 0 0 22px -12px var(--hipo-neon);
 }
 
 .card.checked::before {
@@ -638,41 +793,168 @@ svg {
   opacity: 1;
 }
 
+.sweep {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.sweep::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 20%, color-mix(in srgb, var(--hipo-palido) 45%, transparent) 50%, transparent 80%);
+  transform: translateX(-110%);
+}
+
+.card.recien .sweep::before {
+  animation: barrido 0.75s var(--ease) forwards;
+}
+
+@keyframes barrido {
+  to {
+    transform: translateX(110%);
+  }
+}
+
+/* Check circular con anillo de luz */
+
 .tick {
+  position: relative;
   flex: none;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   display: grid;
   place-items: center;
   border-radius: 50%;
-  border: 2px solid color-mix(in srgb, var(--hipo-claro) 75%, transparent);
-  transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
+  border: 2px solid color-mix(in srgb, var(--hipo-neon) 80%, transparent);
+  box-shadow: 0 0 6px -1px var(--hipo-neon), inset 0 0 6px -2px var(--hipo-neon);
+  animation: anillo-respira 2.8s ease-in-out infinite;
+  transition: transform 0.3s var(--ease), border-color 0.3s, box-shadow 0.3s;
+}
+
+@keyframes anillo-respira {
+  50% {
+    box-shadow: 0 0 11px 0 color-mix(in srgb, var(--hipo-neon) 70%, transparent), inset 0 0 8px -2px var(--hipo-neon);
+  }
+}
+
+.card:hover .tick {
+  transform: scale(1.14);
+  box-shadow: 0 0 16px 1px var(--hipo-neon), inset 0 0 8px -2px var(--hipo-neon);
+}
+
+.tick::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--hipo-palido), var(--hipo-claro) 45%, var(--hipo) 100%);
+  transform: scale(0);
+  transition: transform 0.22s var(--ease);
+}
+
+.tick::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  border: 2px solid var(--hipo-neon);
+  opacity: 0;
+  pointer-events: none;
 }
 
 .tick svg {
-  width: 11px;
-  height: 11px;
+  position: relative;
+  z-index: 1;
+  width: 12px;
+  height: 12px;
   stroke: var(--hipo-fg);
-  stroke-width: 3.2;
-  stroke-dasharray: 20;
-  stroke-dashoffset: 20;
-  transition: stroke-dashoffset 0.35s var(--ease) 0.05s;
+  stroke-width: 3.4;
+  stroke-dasharray: 22;
+  stroke-dashoffset: 22;
+  transition: stroke-dashoffset 0.2s ease-in;
 }
 
 .card.checked .tick {
-  background: var(--hipo);
-  border-color: var(--hipo);
-  box-shadow: 0 0 12px var(--hipo);
-  animation: pop 0.35s var(--ease);
+  border-color: var(--hipo-neon);
+  box-shadow: 0 0 14px 1px var(--hipo-neon);
+  animation: none;
+}
+
+.card.checked .tick::before {
+  transform: scale(1);
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .card.checked .tick svg {
   stroke-dashoffset: 0;
+  transition: stroke-dashoffset 0.4s var(--ease) 0.15s;
+}
+
+.card.recien .tick {
+  animation: pop 0.45s var(--ease);
+}
+
+.card.recien .tick::after {
+  animation: onda 0.7s var(--ease) forwards;
 }
 
 @keyframes pop {
-  50% {
-    transform: scale(1.25);
+  40% {
+    transform: scale(1.3);
+  }
+}
+
+@keyframes onda {
+  0% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+}
+
+.burst {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  pointer-events: none;
+}
+
+.burst i {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  margin: -2px 0 0 -2px;
+  border-radius: 50%;
+  background: var(--hipo-palido);
+  box-shadow: 0 0 6px var(--hipo-neon);
+  opacity: 0;
+}
+
+.burst i:nth-child(1) { --a: 0deg; }
+.burst i:nth-child(2) { --a: 60deg; }
+.burst i:nth-child(3) { --a: 120deg; }
+.burst i:nth-child(4) { --a: 180deg; }
+.burst i:nth-child(5) { --a: 240deg; }
+.burst i:nth-child(6) { --a: 300deg; }
+
+.card.recien .burst i {
+  animation: chispa 0.6s var(--ease) forwards;
+}
+
+@keyframes chispa {
+  0% {
+    opacity: 1;
+    transform: rotate(var(--a)) translateY(-6px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--a)) translateY(-19px) scale(0.3);
   }
 }
 
@@ -949,19 +1231,29 @@ button:focus-visible {
 }
 
 .day:hover {
-  transform: scale(1.08);
-  box-shadow: 0 0 14px -2px var(--dia, var(--accent));
+  transform: scale(1.1);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--dia, var(--hipo-neon)) 60%, #fff), 0 0 18px -2px var(--dia, var(--hipo-neon));
+  filter: brightness(1.12);
   z-index: 1;
 }
 
 .day.hoy::after {
   content: "";
   position: absolute;
-  inset: -2px;
-  border-radius: 10px;
-  border: 2px solid #fff;
-  box-shadow: 0 0 12px rgba(255, 255, 255, 0.7);
+  inset: -3px;
+  border-radius: 11px;
+  border: 2px solid var(--hipo-palido);
   animation: dot-breathe 2.6s ease-in-out infinite;
+}
+
+.drawer {
+  border-color: color-mix(in srgb, var(--hipo-neon) 28%, var(--line));
+  box-shadow: -20px 0 60px -30px var(--hipo-neon), 0 10px 40px -20px rgba(0, 0, 0, 0.8);
+}
+
+.round-btn:hover {
+  border-color: color-mix(in srgb, var(--hipo-neon) 55%, transparent);
+  box-shadow: 0 0 14px -4px var(--hipo-neon);
 }
 
 .day.vacio {

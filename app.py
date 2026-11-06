@@ -94,7 +94,17 @@ class Api:
         return {"ok": True, "tipo": "ok", "titulo": "Vista previa", "mensaje": "Se abrió el PDF para imprimir."}
 
 
+def quitar_marca_de_internet():
+    if not getattr(sys, "frozen", False):
+        return
+    try:
+        os.remove(sys.executable + ":Zone.Identifier")
+    except OSError:
+        pass
+
+
 def main():
+    quitar_marca_de_internet()
     api = Api(ChecklistCore())
     window = webview.create_window(
         "Checklist Hipódromos",
