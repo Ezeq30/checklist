@@ -245,13 +245,14 @@ svg {
 }
 
 .brand-kicker {
-  font-size: 9px;
-  letter-spacing: 0.24em;
-  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  color: #c9d2ee;
 }
 
 .brand-title {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 650;
   letter-spacing: 0.02em;
 }
@@ -317,9 +318,9 @@ svg {
 }
 
 .tab-label {
-  font-size: 9px;
-  letter-spacing: 0.18em;
-  opacity: 0.85;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  opacity: 0.95;
 }
 
 .tab-hipo {
@@ -566,9 +567,10 @@ svg {
 }
 
 .hipo-date {
-  font-size: 10.5px;
-  color: var(--muted);
-  letter-spacing: 0.06em;
+  font-size: 11px;
+  font-weight: 500;
+  color: #aeb8d6;
+  letter-spacing: 0.05em;
 }
 
 .mode-seg {
@@ -824,8 +826,8 @@ svg {
 .tick {
   position: relative;
   flex: none;
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   display: grid;
   place-items: center;
   border-radius: 50%;
@@ -869,8 +871,8 @@ svg {
 .tick svg {
   position: relative;
   z-index: 1;
-  width: 12px;
-  height: 12px;
+  width: 13px;
+  height: 13px;
   stroke: var(--hipo-fg);
   stroke-width: 3.4;
   stroke-dasharray: 22;
@@ -960,7 +962,7 @@ svg {
 
 .card-text {
   font-weight: 600;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.18;
   letter-spacing: 0.02em;
   color: #dbe3ff;
@@ -978,7 +980,7 @@ svg {
 
 .setear-hipo {
   font-weight: 800;
-  font-size: 12px;
+  font-size: 13px;
   letter-spacing: 0.05em;
   animation: setear-blink 1.2s steps(1) infinite;
 }
@@ -1196,9 +1198,10 @@ button:focus-visible {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   margin-bottom: 4px;
-  font-size: 9.5px;
-  letter-spacing: 0.1em;
-  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #aeb8d6;
   text-align: center;
 }
 
@@ -1418,6 +1421,287 @@ button:focus-visible {
 .campo input:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+}
+
+/* Caballito que sigue al mouse */
+
+.caballito {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 40;
+  width: 64px;
+  height: 38px;
+  pointer-events: none;
+  color: var(--hipo-neon);
+  opacity: 0;
+  filter: drop-shadow(0 0 5px var(--hipo-neon)) drop-shadow(0 0 12px color-mix(in srgb, var(--hipo-neon) 55%, transparent));
+  transition: opacity 0.35s var(--ease);
+  will-change: transform;
+}
+
+.caballito.visible {
+  opacity: 1;
+}
+
+.caballo {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  transition: transform 0.25s var(--ease);
+}
+
+.caballito.izq .caballo {
+  transform: scaleX(-1);
+}
+
+.caballo .torso,
+.caballo .cabeza path:not(.crin),
+.caballo .cola {
+  fill: currentColor;
+  stroke: none;
+}
+
+.caballo .crin {
+  fill: none;
+  stroke: color-mix(in srgb, var(--hipo-palido) 70%, currentColor);
+  stroke-width: 1.6;
+}
+
+.caballo .jinete .silks,
+.caballo .jinete .casco {
+  fill: var(--hipo-palido);
+  stroke: none;
+}
+
+.caballo .jinete .brazo,
+.caballo .jinete .pierna {
+  fill: none;
+  stroke: var(--hipo-palido);
+  stroke-width: 1.9;
+}
+
+.caballo .pata path {
+  fill: none;
+  stroke: currentColor;
+}
+
+.caballo .pata .muslo {
+  stroke-width: 4;
+}
+
+.caballo .pata .canilla path {
+  stroke-width: 2.1;
+}
+
+.caballo .pata,
+.caballo .canilla,
+.caballo .cola,
+.caballo .cabeza,
+.caballo .jinete,
+.caballo-cuerpo {
+  transform-box: view-box;
+}
+
+.caballo .pata.lejana {
+  opacity: 0.5;
+}
+
+.caballo .pata.tras {
+  transform-origin: 33.5px 29.5px;
+}
+
+.caballo .pata.tras .canilla {
+  transform-origin: 30px 42px;
+}
+
+.caballo .pata.del {
+  transform-origin: 66px 30.5px;
+}
+
+.caballo .pata.del .canilla {
+  transform-origin: 67px 42px;
+}
+
+.caballo .cola {
+  transform-origin: 29px 24px;
+}
+
+.caballo .cabeza {
+  transform-origin: 62px 24px;
+}
+
+.caballo-cuerpo {
+  transform-origin: 50px 30px;
+}
+
+/* Galope de carrera: zancada larga, ciclo de 0.5 s */
+
+.caballito.corriendo .caballo-cuerpo {
+  animation: galope-cuerpo 0.5s linear infinite;
+}
+
+.caballito.corriendo .pata.del {
+  animation: del-hombro 0.5s linear infinite;
+}
+
+.caballito.corriendo .pata.del .canilla {
+  animation: del-rodilla 0.5s linear infinite;
+}
+
+.caballito.corriendo .pata.tras {
+  animation: tras-cadera 0.5s linear infinite;
+}
+
+.caballito.corriendo .pata.tras .canilla {
+  animation: tras-garron 0.5s linear infinite;
+}
+
+.caballito.corriendo .pata.del.lejana,
+.caballito.corriendo .pata.del.lejana .canilla {
+  animation-delay: -0.06s;
+}
+
+.caballito.corriendo .pata.tras.lejana,
+.caballito.corriendo .pata.tras.lejana .canilla {
+  animation-delay: -0.06s;
+}
+
+.caballito.corriendo .cola {
+  animation: cola 0.5s ease-in-out infinite;
+}
+
+.caballito.corriendo .cabeza {
+  animation: cabeza 0.5s ease-in-out infinite;
+}
+
+@keyframes galope-cuerpo {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  30% {
+    transform: translateY(-1.8px) rotate(-1.2deg);
+  }
+  65% {
+    transform: translateY(0.6px) rotate(0.8deg);
+  }
+}
+
+@keyframes del-hombro {
+  0%,
+  100% {
+    transform: rotate(-52deg);
+  }
+  45% {
+    transform: rotate(28deg);
+  }
+  70% {
+    transform: rotate(18deg);
+  }
+}
+
+@keyframes del-rodilla {
+  0%,
+  40%,
+  100% {
+    transform: rotate(0deg);
+  }
+  60% {
+    transform: rotate(95deg);
+  }
+  85% {
+    transform: rotate(20deg);
+  }
+}
+
+@keyframes tras-cadera {
+  0%,
+  100% {
+    transform: rotate(-30deg);
+  }
+  50% {
+    transform: rotate(40deg);
+  }
+  75% {
+    transform: rotate(10deg);
+  }
+}
+
+@keyframes tras-garron {
+  0%,
+  45%,
+  100% {
+    transform: rotate(0deg);
+  }
+  65% {
+    transform: rotate(-70deg);
+  }
+  85% {
+    transform: rotate(-20deg);
+  }
+}
+
+@keyframes cola {
+  0%,
+  100% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(5deg);
+  }
+}
+
+@keyframes cabeza {
+  0%,
+  100% {
+    transform: rotate(2.5deg);
+  }
+  50% {
+    transform: rotate(-3.5deg);
+  }
+}
+
+.polvo {
+  position: fixed;
+  inset: 0;
+  z-index: 39;
+  pointer-events: none;
+}
+
+.polvo i {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--hipo-palido), var(--hipo-neon) 60%, transparent 70%);
+  box-shadow: 0 0 8px var(--hipo-neon);
+  animation: polvo 0.65s var(--ease) forwards;
+}
+
+@keyframes polvo {
+  0% {
+    opacity: 0.9;
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy)) scale(0.2);
+  }
+}
+
+#btn-caballito.on {
+  color: var(--hipo-neon);
+  border-color: color-mix(in srgb, var(--hipo-neon) 55%, transparent);
+  box-shadow: 0 0 16px -6px var(--hipo-neon);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .caballito,
+  .polvo {
+    display: none;
+  }
 }
 
 /* Avisos */

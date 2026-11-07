@@ -103,6 +103,7 @@ function render() {
   renderXml();
   renderBody(p);
   renderLogin();
+  Caballito.setActivo(!S.estado.preferencias || S.estado.preferencias.caballito !== false);
 }
 
 function renderTabs() {
@@ -476,6 +477,117 @@ async function editarDia(llamada) {
   await cargarCalendario();
 }
 
+// Caballito que sigue al mouse
+
+const Caballito = (() => {
+  const ANCHO = 64;
+  const ALTO = 38;
+  const SUAVIZADO = 0.13;
+  const INACTIVIDAD_MS = 800;
+  const MAX_POLVO = 26;
+  const sinMovimiento = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  let caja = null;
+  let polvo = null;
+  let activo = false;
+  let visible = false;
+  let raf = null;
+  let temporizador = null;
+  let dir = 1;
+  let dirMouse = 1;
+  let x = 0;
+  let y = 0;
+  let objetivo = { x: 0, y: 0 };
+  let cursor = { x: 0, y: 0 };
+  let ultimoPolvo = 0;
+
+  function mostrar() {
+    visible = true;
+    caja.classList.add("visible");
+  }
+
+  function ocultar() {
+    visible = false;
+    caja.classList.remove("visible", "corriendo");
+    clearTimeout(temporizador);
+  }
+
+  function apuntar() {
+    objetivo = { x: cursor.x - dirMouse * 40, y: cursor.y + 30 };
+  }
+
+  function alMover(e) {
+    if (!activo) return;
+    const mvx = e.clientX - cursor.x;
+    if (mvx > 2) dirMouse = 1;
+    else if (mvx < -2) dirMouse = -1;
+    cursor = { x: e.clientX, y: e.clientY };
+    apuntar();
+    if (!visible) {
+      x = objetivo.x;
+      y = objetivo.y;
+      mostrar();
+    }
+    clearTimeout(temporizador);
+    temporizador = setTimeout(ocultar, INACTIVIDAD_MS);
+    if (!raf) raf = requestAnimationFrame(cuadro);
+  }
+
+  function soltarPolvo() {
+    if (polvo.childElementCount >= MAX_POLVO) polvo.firstElementChild.remove();
+    const p = document.createElement("i");
+    p.style.left = `${x - dir * 12}px`;
+    p.style.top = `${y - 2}px`;
+    p.style.setProperty("--dx", `${-dir * (6 + Math.random() * 12)}px`);
+    p.style.setProperty("--dy", `${-(4 + Math.random() * 10)}px`);
+    p.addEventListener("animationend", () => p.remove());
+    polvo.append(p);
+  }
+
+  function cuadro(t) {
+    const dx = objetivo.x - x;
+    const dy = objetivo.y - y;
+    x += dx * SUAVIZADO;
+    y += dy * SUAVIZADO;
+
+    if (dx > 1.5) dir = 1;
+    else if (dx < -1.5) dir = -1;
+
+    caja.style.transform = `translate3d(${x - ANCHO / 2}px, ${y - ALTO}px, 0)`;
+    caja.classList.toggle("izq", dir < 0);
+    const corriendo = Math.hypot(dx, dy) > 1.2;
+    caja.classList.toggle("corriendo", corriendo);
+    if (corriendo && visible && t - ultimoPolvo > 70) {
+      ultimoPolvo = t;
+      soltarPolvo();
+    }
+
+    raf = visible || Math.hypot(dx, dy) > 0.5 ? requestAnimationFrame(cuadro) : null;
+  }
+
+  function iniciar() {
+    caja = $("#caballito");
+    polvo = $("#polvo");
+    document.addEventListener("mousemove", alMover);
+    document.documentElement.addEventListener("mouseleave", ocultar);
+  }
+
+  function setActivo(valor) {
+    activo = valor && !sinMovimiento;
+    $("#btn-caballito").classList.toggle("on", activo);
+    $("#btn-caballito").title = activo ? "Caballito activado (tocá para apagarlo)" : "Caballito apagado (tocá para prenderlo)";
+    if (!activo) ocultar();
+  }
+
+  return { iniciar, setActivo, activo: () => activo };
+})();
+
+async function alternarCaballito() {
+  const r = await api.set_preferencia("caballito", !Caballito.activo());
+  aplicar(r.estado);
+  toast("info", Caballito.activo() ? "Caballito activado" : "Caballito apagado", "");
+}
+
 // Eventos
 
 function conectarEventos() {
@@ -493,6 +605,7 @@ function conectarEventos() {
   $("#xml-listo").onclick = marcarXml;
   $("#btn-calendario").onclick = abrirCalendario;
   $("#btn-login").onclick = abrirLogin;
+  $("#btn-caballito").onclick = alternarCaballito;
   $("#cal-close").onclick = cerrarCalendario;
   $("#cal-prev").onclick = () => moverMes(-1);
   $("#cal-next").onclick = () => moverMes(1);
@@ -547,6 +660,7 @@ function crearApiSimulada() {
   const data = { calendario: {}, checklist: {}, estado: {}, xml: {} };
   for (let n = -40; n < 70; n++) data.calendario[iso(masDias(n))] = ciclo[(n % 3 + 3) % 3];
   const modos = { hoy: "dia1", manana: "dia1" };
+  const prefs = { caballito: true };
   let admin = false;
   const r = (ok, tipo, titulo = "", mensaje = "") => ({ ok, tipo, titulo, mensaje });
   const fechaPanel = (p) => iso(masDias(p === "hoy" ? 0 : 1));
@@ -573,7 +687,7 @@ function crearApiSimulada() {
     const f = pendiente();
     const h = f && data.calendario[f];
     return {
-      hoy: iso(hoyD), admin,
+      hoy: iso(hoyD), admin, preferencias: { ...prefs },
       paneles: { hoy: panel("hoy"), manana: panel("manana") },
       xml: f ? { fecha: f, hipo: h, sigla: XML[h], nombre: HIPOS[h].nombre, color: HIPOS[h].color, claro: HIPOS[h].claro, texto: `SUBIR EL XML DE ${XML[h]} (${f.slice(8, 10)}/${f.slice(5, 7)})`, confirmacion: `¿Confirmás que subiste el XML de ${XML[h]} del ${f.slice(8, 10)}/${f.slice(5, 7)}?` } : null,
       hipodromos: Object.entries(HIPOS).map(([id, h2]) => ({ id, nombre: h2.nombre, color: h2.color, fg: h2.fg })),
@@ -643,6 +757,10 @@ function crearApiSimulada() {
       delete data.calendario[f];
       return conEstado(r(true, "ok"));
     },
+    set_preferencia: (clave, valor) => {
+      prefs[clave] = !!valor;
+      return conEstado(r(true, "ok"));
+    },
     guardar_pdf: () => Promise.resolve(r(true, "ok", "PDF guardado", "(simulado)")),
     imprimir: () => Promise.resolve(r(true, "ok", "Vista previa", "(simulado)")),
   };
@@ -651,6 +769,7 @@ function crearApiSimulada() {
 async function iniciar() {
   api = await obtenerApi();
   conectarEventos();
+  Caballito.iniciar();
   aplicar(await api.estado());
   setInterval(async () => aplicar(await api.estado()), 60000);
 }

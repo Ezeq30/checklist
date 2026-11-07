@@ -68,6 +68,10 @@ class Api:
         with self._lock:
             return self._con_estado(self._core.borrar(fecha))
 
+    def set_preferencia(self, clave, valor):
+        with self._lock:
+            return self._con_estado(self._core.set_preferencia(clave, valor))
+
     def guardar_pdf(self, panel):
         destino = self._window.create_file_dialog(
             webview.FileDialog.SAVE,
@@ -110,8 +114,8 @@ def main():
         "Checklist Hipódromos",
         url=UI_INDEX,
         js_api=api,
-        width=940,
-        height=400,
+        width=860,
+        height=470,
         resizable=False,
         background_color="#070B14",
     )

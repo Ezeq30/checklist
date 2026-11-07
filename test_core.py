@@ -92,6 +92,13 @@ class CoreTest(unittest.TestCase):
         self.assertEqual(cal["dias"][7]["hipo"], "Palermo")
         self.assertTrue(cal["dias"][3]["hoy"])
 
+    def test_preferencia_caballito_persiste(self):
+        self.assertTrue(self.core.estado()["preferencias"]["caballito"])
+        self.assertTrue(self.core.set_preferencia("caballito", False)["ok"])
+        otro = core.ChecklistCore(self.archivo, hoy=lambda: self.fecha)
+        self.assertFalse(otro.estado()["preferencias"]["caballito"])
+        self.assertFalse(self.core.set_preferencia("otra", True)["ok"])
+
     def test_pdf(self):
         archivo = os.path.join(self.dir, "x.pdf")
         self.core.generar_pdf("hoy", archivo)

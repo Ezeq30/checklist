@@ -76,6 +76,8 @@ MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto
 ADMIN_USUARIO = "admin"
 ADMIN_CLAVE = "eze1"
 
+PREFERENCIAS_POR_DEFECTO = {"caballito": True}
+
 if getattr(sys, "frozen", False):
     exec_dir = os.path.dirname(sys.executable)
 else:
@@ -321,6 +323,18 @@ class ChecklistCore:
             "dias": dias,
         }
 
+    # Preferencias
+
+    def preferencias(self):
+        return {**PREFERENCIAS_POR_DEFECTO, **self.data.get("preferencias", {})}
+
+    def set_preferencia(self, clave, valor):
+        if clave not in PREFERENCIAS_POR_DEFECTO:
+            return resultado(False, "invalido", "Error", "Preferencia desconocida")
+        self.data.setdefault("preferencias", {})[clave] = bool(valor)
+        self.guardar_datos()
+        return resultado(True, "ok")
+
     # Estado para la interfaz
 
     def _panel(self, panel):
@@ -367,6 +381,7 @@ class ChecklistCore:
         return {
             "hoy": self._hoy().isoformat(),
             "admin": self.admin,
+            "preferencias": self.preferencias(),
             "paneles": {panel: self._panel(panel) for panel in ("hoy", "manana")},
             "xml": self._alerta_xml(),
             "hipodromos": [

@@ -298,11 +298,25 @@
       "LOCAL ASSOC BETTING CONTROL": true,
       "IMPORT BETTING CONTROL": true,
       "TIM BETTING CONTROL POR ASOCIACION": true,
-      "DEFAULT MINIMOS ARG USD PER": true
+      "DEFAULT MINIMOS ARG USD PER": true,
+      "GENERAR DETALLE": false,
+      "CARGAR EL VIDEO EN LA APP MOBILE": false,
+      "CANAL 26 ASIGNACION 29": false,
+      "ABRIR LA VENTA A LA HORA INDICADA": false,
+      "TELLER VOUCHER LIMIT $500,000": false,
+      "RESETEAR TERMINALES": false
+    },
+    "2026-11-08": {
+      "FECHA Y ESTADO": false,
+      "DEFAULT MINIMOS ARG USD PER": false,
+      "SALES TAX ASSOCIATION": true
     }
   },
   "estado": {
     "2026-11-06": "completo",
     "2026-11-07": "dia1_completado"
+  },
+  "preferencias": {
+    "caballito": true
   }
 }
